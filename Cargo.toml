@@ -1,0 +1,11 @@
+[package]
+name = "bin-layout"
+version = "0.1.0"
+edition = "2018"
+
+[features]
+BE = ["data-view/BE"]
+NE = ["data-view/NE"]
+
+[dependencies]
+data-view = "4"

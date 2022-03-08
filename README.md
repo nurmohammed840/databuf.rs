@@ -1,5 +1,4 @@
-This library 
-
+Very fast (Zero Cost)! yet flexible, this library used to serialize and deserialize data in binary format.
 
 ### Endian
 
@@ -13,6 +12,8 @@ bin-layout = { version = "0.1", features = ["BE"] }
 
 ### Data Types
 
-#### Primitive Types
+The library is very flexible and easy to use. The only trait you need to implement is `DataType`.
 
-All supported primitive types are: `u8`, `u16`, `u32`, `u64`, `i8`, `i16`, `i32`, `i64`, `f32`, `f64`, `bool`
+All [primitive types](https://doc.rust-lang.org/stable/rust-by-example/primitives.html) (Both Scalar and Compound Types) implement this `DataType` trait.
+
+And For collection types, Only `Vec` and `String` are supported. 

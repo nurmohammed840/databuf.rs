@@ -5,6 +5,8 @@
 pub mod utils;
 use core::convert::TryInto;
 pub use data_view::{DataView, View};
+
+/// Shortcut for `Result<T, E>`, where `E` is `ErrorKind`.
 pub type Result<T> = core::result::Result<T, ErrorKind>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]

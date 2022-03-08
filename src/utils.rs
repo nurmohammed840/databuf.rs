@@ -8,6 +8,7 @@ use core::{
 };
 use data_view::Endian;
 
+/// This is a utility struct that allows to reading and writing different variants length records.
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Record<Len, Type> {
     pub data: Type,

@@ -22,9 +22,9 @@ where
     usize: TryFrom<E>,
     <usize as TryFrom<E>>::Error: Debug,
 {
-    fn serialize<T: AsMut<[u8]>>(&self, view: &mut DataView<T>) {
+    fn serialize<T: AsMut<[u8]>>(self, view: &mut DataView<T>) {
         view.write(E::try_from(self.data.len()).unwrap());
-        view.write_slice(&self.data);
+        view.write_slice(self.data);
     }
     fn deserialize<T: AsRef<[u8]>>(view: &mut DataView<T>) -> Result<Self> {
         let num: E = map!(@opt view.read(); NotEnoughData);
@@ -43,9 +43,9 @@ where
     usize: TryFrom<E>,
     <usize as TryFrom<E>>::Error: Debug,
 {
-    fn serialize<T: AsMut<[u8]>>(&self, view: &mut DataView<T>) {
+    fn serialize<T: AsMut<[u8]>>(self, view: &mut DataView<T>) {
         view.write(E::try_from(self.data.len()).unwrap());
-        for record in &self.data {
+        for record in self.data {
             record.serialize(view);
         }
     }

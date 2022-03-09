@@ -11,14 +11,14 @@ enum Subject {
 }
 
 impl DataType for Subject {
-    fn serialize<T: AsMut<[u8]>>(&self, view: &mut DataView<T>) {
+    fn serialize<T: AsMut<[u8]>>(self, view: &mut DataView<T>) {
         let code = match self {
             Math => 302,
             Physics => 317,
             Chemistry => 345,
             Other(id, name) => {
                 let len: u8 = name.len().try_into().unwrap();
-                view.write(*id);
+                view.write(id);
                 view.write(len);
                 return view.write_slice(name);
             }

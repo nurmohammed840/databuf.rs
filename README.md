@@ -1,3 +1,5 @@
+[Doc](https://docs.rs/bin-layout/)
+
 Very fast! yet flexible, this library used to serialize and deserialize data in binary format.
 
 Inspaired by [bincode](https://github.com/bincode-org/bincode), But much more flexible.
@@ -14,11 +16,11 @@ bin-layout = { version = "0.1", features = ["BE"] }
 
 ### Data Types
 
-The library is very flexible and easy to use. The only trait you need to implement is `DataType`.
+The library is very flexible and easy to use. The only trait you need to implement is [DataType](https://docs.rs/bin-layout/latest/bin_layout/trait.DataType.html).
 
-All [primitive types](https://doc.rust-lang.org/stable/rust-by-example/primitives.html) implement this `DataType` trait.
+All [primitive types](https://doc.rust-lang.org/stable/rust-by-example/primitives.html) implement this trait.
 
-And For collection types, Only `Vec` and `String` are supported. 
+And For collection types, `Vec` and `String` are supported. They are encoded with their length (`u32`) value first, following by each entry of the collection.
 
 ### Example
 

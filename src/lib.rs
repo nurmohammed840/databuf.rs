@@ -6,7 +6,7 @@ pub mod utils;
 use core::convert::TryInto;
 pub use data_view::{DataView, View};
 
-/// Shortcut for `Result<T, E>`, where `E` is `ErrorKind`.
+/// Shortcut for `Result<T, ErrorKind>`
 pub type Result<T> = core::result::Result<T, ErrorKind>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -24,6 +24,11 @@ macro_rules! map {
 }
 pub(crate) use map;
 
+/// A trait for serialize and deserialize data for binary format.
+///
+/// All [primitive types](https://doc.rust-lang.org/stable/rust-by-example/primitives.html) implement this trait.
+/// 
+/// And For collection types, `Vec` and `String` are supported. They are encoded with their length `u32` value first, Following by each entry of the collection.
 pub trait DataType {
     fn serialize<T: AsMut<[u8]>>(&self, view: &mut DataView<T>);
     fn deserialize<T: AsRef<[u8]>>(view: &mut DataView<T>) -> Result<Self>
@@ -37,12 +42,8 @@ macro_rules! def {
         #[derive(Debug)]
         struct $name { $($field_name: $field_type,)* }
         impl $crate::DataType for $name {
-            fn serialize<T: AsMut<[u8]>>(&self, view: &mut $crate::DataView<T>) {
-                $(self.$field_name.serialize(view);)*
-            }
-            fn deserialize<T: AsRef<[u8]>>(view: &mut $crate::DataView<T>) -> $crate::Result<Self> {
-                Ok(Self { $($field_name: $crate::DataType::deserialize(view)?,)* })
-            }
+            fn serialize<T: AsMut<[u8]>>(&self, view: &mut $crate::DataView<T>) { $(self.$field_name.serialize(view);)* }
+            fn deserialize<T: AsRef<[u8]>>(view: &mut $crate::DataView<T>) -> $crate::Result<Self> { Ok(Self { $($field_name: $crate::DataType::deserialize(view)?,)* }) }
         }
     };
 }
@@ -53,9 +54,7 @@ macro_rules! impl_data_type_for {
             #[inline]
             fn serialize<T: AsMut<[u8]>>(&self, view: &mut DataView<T>) { view.write(*self) }
             #[inline]
-            fn deserialize<T: AsRef<[u8]>>(view: &mut DataView<T>) -> Result<Self>{
-                Ok(map!(@opt view.read(); NotEnoughData))
-            }
+            fn deserialize<T: AsRef<[u8]>>(view: &mut DataView<T>) -> Result<Self>{ Ok(map!(@opt view.read(); NotEnoughData)) }
         }
     )*);
     [@typle: $(($($name: ident : $idx: tt),*)),*] => ($(
@@ -63,9 +62,7 @@ macro_rules! impl_data_type_for {
             #[inline]
             fn serialize<T: AsMut<[u8]>>(&self, view: &mut DataView<T>) { $(self.$idx.serialize(view);)* }
             #[inline]
-            fn deserialize<T: AsRef<[u8]>>(view: &mut DataView<T>) -> Result<Self> {
-                Ok(($($name::deserialize(view)?),*))
-            }
+            fn deserialize<T: AsRef<[u8]>>(view: &mut DataView<T>) -> Result<Self> { Ok(($($name::deserialize(view)?),*)) }
         }
     )*)
 }

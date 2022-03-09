@@ -1,26 +1,26 @@
 [Doc](https://docs.rs/bin-layout/)
 
-Very fast! yet flexible, this library used to serialize and deserialize data in binary format.
+Very fast!and flexible, This library used to serialize and deserialize data in binary format.
 
 Inspaired by [bincode](https://github.com/bincode-org/bincode), But much more flexible.
 
-### Endian
+### [Endianness](https://en.wikipedia.org/wiki/Endianness)
 
 By default, the library uses little endian.
-If you want to use big endian, you can set `BE` features flag. And for native endian use `NE`. for example:
+If you want to use big endian, you can set `BE` features flag. And for native endian use `NE`. For example:
 
 ```toml
 [dependencies]
 bin-layout = { version = "0.1", features = ["BE"] }
 ```
 
-### Data Types
+### Data Type
 
 The library is very flexible and easy to use. The only trait you need to implement is [DataType](https://docs.rs/bin-layout/latest/bin_layout/trait.DataType.html).
 
 All [primitive types](https://doc.rust-lang.org/stable/rust-by-example/primitives.html) implement this trait.
 
-And For collection types, `Vec` and `String` are supported. They are encoded with their length (`u32`) value first, following by each entry of the collection.
+And For collection types, `Vec` and `String` are supported. They are encoded with their length `u32` value first, Following by each entry of the collection.
 
 ### Example
 
@@ -47,6 +47,6 @@ let company = Company::deserialize(&mut view).unwrap();
 println!("{:#?}", company);
 ```
 
-##### Todo
+#### Todo
 
 - [ ] Support [Procedural macros](https://doc.rust-lang.org/reference/procedural-macros.html)

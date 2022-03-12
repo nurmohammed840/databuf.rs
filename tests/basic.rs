@@ -1,4 +1,6 @@
-use bin_layout::{def, utils::Record, DataType, DataView, Result};
+#![allow(warnings)]
+
+use bin_layout::{utils::Record, DataType, DataView, ErrorKind};
 use std::convert::TryInto;
 
 use Subject::*;
@@ -11,7 +13,7 @@ enum Subject {
 }
 
 impl DataType for Subject {
-    fn serialize<T: AsMut<[u8]>>(self, view: &mut DataView<T>) {
+    fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) {
         let code = match self {
             Math => 302,
             Physics => 317,
@@ -25,7 +27,7 @@ impl DataType for Subject {
         };
         view.write::<u16>(code);
     }
-    fn deserialize<T: AsRef<[u8]>>(view: &mut DataView<T>) -> Result<Self> {
+    fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self, ErrorKind> {
         let name = match u16::deserialize(view)? {
             302 => Math,
             317 => Physics,
@@ -39,18 +41,20 @@ impl DataType for Subject {
     }
 }
 
-def!(Student, {
+#[derive(Debug, DataType)]
+struct Student {
     age: u8,
     name: String,
     gender: bool,
     roll: u16,
-});
+}
 
-def!(Class, {
+#[derive(Debug, DataType)]
+struct Class {
     name: String,
     subjects: [Subject; 4],
-    students: Record<u8, Vec<Student>>
-});
+    students: Record<u8, Vec<Student>>,
+}
 
 #[test]
 fn basic() {

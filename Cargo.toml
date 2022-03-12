@@ -1,6 +1,6 @@
 [package]
 name = "bin-layout"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2021"
 
 description = "This library used to serialize and deserialize data in binary format."
@@ -16,3 +16,5 @@ NE = ["data-view/NE"]
 
 [dependencies]
 data-view = "4"
+
+derive = { path = "./derive" }

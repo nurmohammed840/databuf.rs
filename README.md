@@ -25,10 +25,12 @@ And For collection types, `Vec` and `String` are supported. They are encoded wit
 ### Example
 
 ```rust
-use bin_layout::{DataType, def};
+use bin_layout::DataType;
 
-def!(Car, { name: String, year: u16, is_new: bool, });
-def!(Company, { name: String, cars: Vec<Car>, });
+#[derive(DataType)]
+struct Car { name: String, year: u16, is_new: bool }
+#[derive(DataType)]
+struct Company { name: String, cars: Vec<Car> }
 
 let company = Company {
     name: "Tesla".into(),
@@ -44,9 +46,4 @@ company.serialize(&mut view);
 view.offset = 0;
 
 let company = Company::deserialize(&mut view).unwrap();
-println!("{:#?}", company);
 ```
-
-#### Todo
-
-- [ ] Support [Procedural macros](https://doc.rust-lang.org/reference/procedural-macros.html)

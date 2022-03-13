@@ -1,11 +1,12 @@
-#![allow(unused_variables)]
+#![allow(warnings)]
 #![cfg_attr(feature = "nightly", feature(array_try_map))]
 #![doc = include_str!("../README.md")]
 
-pub mod utils;
-use core::convert::TryInto;
-pub use data_view::{DataView, View};
+// pub mod utils;
 
+// use core::convert::TryInto;
+
+pub use data_view::{DataView, View};
 pub use derive::*;
 
 /// Shortcut for `Result<T, bin_layout::ErrorKind>`
@@ -31,30 +32,16 @@ pub(crate) use map;
 /// All [primitive types](https://doc.rust-lang.org/stable/rust-by-example/primitives.html) implement this trait.
 ///
 /// And For collection types, `Vec` and `String` are supported. They are encoded with their length `u32` value first, Following by each entry of the collection.
-pub trait DataType {
+pub trait DataType<'a>: Sized {
     fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>);
-    fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self>
-    where
-        Self: Sized;
+    fn deserialize(view: &'a mut DataView<impl AsRef<[u8]>>) -> Result<Self>;
 }
 
-// #[macro_export]
-// macro_rules! def {
-//     [$name:ident, { $($field_name:ident : $field_type: ty),* $(,)? }] => {
-//         #[derive(Debug)]
-//         struct $name { $($field_name: $field_type,)* }
-//         impl $crate::DataType for $name {
-//             fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) { $(self.$field_name.serialize(view);)* }
-//             fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> $crate::Result<Self> { Ok(Self { $($field_name: $crate::DataType::deserialize(view)?,)* }) }
-//         }
-//     };
-// }
-
 macro_rules! impl_data_type_for {
-    [$($rty:ty : $nbyte:literal)*] => ($(
-        impl DataType for $rty {
+    [$($rty:ty)*] => ($(
+        impl DataType<'_> for $rty {
             #[inline]
-            fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) { view.write(self) }
+            fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) { view.write(self).unwrap(); }
             #[inline]
             fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self>{ Ok(map!(@opt view.read(); NotEnoughData)) }
         }
@@ -68,63 +55,88 @@ macro_rules! impl_data_type_for {
         }
     )*)
 }
-impl_data_type_for!(u8:1 u16:2 u32:4 u64:8 u128:16 i8:1 i16:2 i32:4 i64:8 i128:16 f32:4 f64:8);
+
+// impl_data_type_for!(
+//     u8 u16 u32 u64 u128
+//     i8 i16 i32 i64 i128
+//     usize isize
+//     f32 f64
+// );
+
 impl_data_type_for!(
     @typle:
-        (),
-        (A:0, B:1),
-        (A:0, B:1, C:2),
-        (A:0, B:1, C:2, D:3),
-        (A:0, B:1, C:2, D:3, E:4)
+        // ()
+        // (A:0, B:1)
+        // (A:0, B:1, C:2),
+        // (A:0, B:1, C:2, D:3),
+        // (A:0, B:1, C:2, D:3, E:4)
 );
-impl DataType for bool {
-    fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) {
-        view.write(self as u8)
-    }
-    fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self> {
-        let num: u8 = map!(@opt view.read(); NotEnoughData);
-        Ok(num != 0)
-    }
-}
-impl DataType for String {
-    fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) {
-        view.write::<u32>(self.len().try_into().unwrap()); // length
-        view.write_slice(self);
-    }
-    fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self> {
-        let len = map!(@opt view.read::<u32>(); NotEnoughData) as usize;
-        let bytes = map!(@opt view.read_slice(len); NotEnoughData).into();
-        Ok(map!(@err String::from_utf8(bytes); InvalidValue))
-    }
-}
 
-impl<D: DataType, const N: usize> DataType for [D; N] {
-    fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) {
-        for item in self {
-            item.serialize(view);
-        }
-    }
-    fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self> {
-        #[cfg(feature = "nightly")]
-        return [(); N].try_map(|_| D::deserialize(view));
+// impl DataType for bool {
+//     fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) {
+//         view.write(self as u8).unwrap();
+//     }
+//     fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self> {
+//         let num: u8 = map!(@opt view.read(); NotEnoughData);
+//         Ok(num != 0)
+//     }
+// }
 
-        #[cfg(not(feature = "nightly"))]
-        return (0..N)
-            .map(|_| D::deserialize(view))
-            .collect::<Result<Vec<_>>>()
-            .map(|v| unsafe { v.try_into().unwrap_unchecked() });
-    }
-}
+// impl DataType for String {
+//     fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) {
+//         view.write::<u32>(self.len().try_into().unwrap()).unwrap(); // length
+//         view.write_slice(self).unwrap();
+//     }
+//     fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self> {
+//         let len = map!(@opt view.read::<u32>(); NotEnoughData) as usize;
+//         let bytes = map!(@opt view.read_slice(len); NotEnoughData).into();
+//         Ok(map!(@err String::from_utf8(bytes); InvalidValue))
+//     }
+// }
 
-impl<D: DataType> DataType for Vec<D> {
-    fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) {
-        view.write::<u32>(self.len().try_into().unwrap()); // length
-        for item in self {
-            item.serialize(view);
-        }
-    }
-    fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self> {
-        let len = map!(@opt view.read::<u32>(); NotEnoughData);
-        (0..len).map(|_| D::deserialize(view)).collect()
-    }
-}
+// impl<D: DataType, const N: usize> DataType for [D; N] {
+//     fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) {
+//         for item in self {
+//             item.serialize(view);
+//         }
+//     }
+//     fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self> {
+//         #[cfg(feature = "nightly")]
+//         return [(); N].try_map(|_| D::deserialize(view));
+//         #[cfg(not(feature = "nightly"))]
+//         return (0..N)
+//             .map(|_| D::deserialize(view))
+//             .collect::<Result<Vec<_>>>()
+//             .map(|v| unsafe { v.try_into().unwrap_unchecked() });
+//     }
+// }
+
+// impl<D: DataType> DataType for Vec<D> {
+//     fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) {
+//         view.write::<u32>(self.len().try_into().unwrap()).unwrap(); // length
+//         for item in self {
+//             item.serialize(view);
+//         }
+//     }
+//     fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self> {
+//         let len = map!(@opt view.read::<u32>(); NotEnoughData);
+//         (0..len).map(|_| D::deserialize(view)).collect()
+//     }
+// }
+
+// struct Bar {
+//     data: [u8; 8],
+// }
+// trait Foo<'a> {
+//     fn foo(bar: &'a mut Bar) -> Self;
+// }
+// impl<'a, 'b, 'c, A, B> Foo<'c> for (A, B)
+// where
+//     A: Foo<'a>,
+//     B: Foo<'b>,
+//     'c: 'a + 'b,
+// {
+//     fn foo(bar: &'c mut Bar) -> Self {
+//         (A::foo(bar), B::foo(bar))
+//     }
+// }

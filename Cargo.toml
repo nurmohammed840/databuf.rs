@@ -15,6 +15,5 @@ BE = ["data-view/BE"]
 NE = ["data-view/NE"]
 
 [dependencies]
-data-view = "4"
-
+data-view = "5"
 derive = { path = "./derive" }

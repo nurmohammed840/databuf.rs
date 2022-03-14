@@ -11,6 +11,7 @@ pub use data_view;
 pub use data_view::DataView;
 pub use derive::*;
 pub use record::Record;
+
 /// Shortcut for `Result<T, bin_layout::ErrorKind>`
 pub type Result<T> = core::result::Result<T, ErrorKind>;
 
@@ -24,12 +25,6 @@ pub enum ErrorKind {
     InsufficientBytes,
     Other,
 }
-
-macro_rules! map {
-    [@err $item:expr ; $err_ty:tt] => { match $item { Ok(v) => v, _ => return Err(ErrorKind::$err_ty) } };
-    [@opt $item:expr ; $err_ty:tt] => { match $item { Some(v) => v, _ => return Err(ErrorKind::$err_ty) } };
-}
-pub(crate) use map;
 
 /// A trait for serialize and deserialize data for binary format.
 ///

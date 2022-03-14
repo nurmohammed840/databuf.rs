@@ -1,4 +1,5 @@
 use crate::*;
+use ErrorKind::*;
 
 impl DataType for String {
     fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) {
@@ -7,9 +8,10 @@ impl DataType for String {
         view.write_slice(self).unwrap();
     }
     fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self> {
-        let len = map!(@opt view.read::<u32>(); InsufficientBytes) as usize;
-        let bytes = map!(@opt view.read_slice(len); InsufficientBytes).into();
-        Ok(map!(@err String::from_utf8(bytes); InvalidData))
+        view.read::<u32>()
+            .ok_or(InsufficientBytes)
+            .and_then(|len| view.read_slice(len as usize).ok_or(InsufficientBytes))
+            .and_then(|bytes| String::from_utf8(bytes.to_vec()).map_err(|_| InvalidData))
     }
 }
 
@@ -25,7 +27,8 @@ where
         }
     }
     fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self> {
-        let len = map!(@opt view.read::<u32>(); InsufficientBytes);
-        (0..len).map(|_| D::deserialize(view)).collect()
+        view.read::<u32>()
+            .ok_or(InsufficientBytes)
+            .and_then(|len| (0..len).map(|_| D::deserialize(view)).collect())
     }
 }

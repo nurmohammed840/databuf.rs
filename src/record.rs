@@ -6,6 +6,7 @@ use core::{
     ops::{Deref, DerefMut},
 };
 use data_view::Endian;
+use ErrorKind::*;
 
 /// This utility struct use for serialize or deserialize variable length records.
 ///
@@ -18,13 +19,13 @@ use data_view::Endian;
 ///
 /// ```rust
 /// use bin_layout::{DataType, Record};
-/// 
+///
 /// let record: Record<u8, String> = String::from("HelloWorld").into();
 /// assert_eq!(record.len(), 10);
-/// 
+///
 /// let mut buf = [0; 16].into();
 /// DataType::serialize(record, &mut buf);
-/// 
+///
 /// // One byte for length, 10 bytes for string
 /// assert_eq!(buf.offset, 11);  // 11 bytes written to buffer
 /// ```
@@ -54,11 +55,13 @@ where
         view.write_slice(self.data).unwrap();
     }
     fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self> {
-        let num: E = map!(@opt view.read(); InsufficientBytes);
-        let len: usize = map!(@err num.try_into(); InvalidLength);
-        let bytes = map!(@opt view.read_slice(len); InsufficientBytes).into();
-        let string = map!(@err String::from_utf8(bytes); InvalidData);
-        Ok(string.into())
+        let num: E = view.read().ok_or(InsufficientBytes)?;
+        let len: usize = num.try_into().map_err(|_| InvalidData)?;
+        let bytes = view.read_slice(len).ok_or(InsufficientBytes)?.into();
+
+        String::from_utf8(bytes)
+            .map_err(|_| InvalidData)
+            .map(|string| Self::new(string))
     }
 }
 
@@ -70,20 +73,20 @@ where
     usize: TryFrom<E>,
 {
     fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) {
-        view.write(E::try_from(self.data.len()).unwrap()).unwrap();
+        let len = E::try_from(self.data.len()).unwrap();
+        view.write(len).unwrap();
         for record in self.data {
             record.serialize(view);
         }
     }
     fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self> {
-        let num: E = map!(@opt view.read(); InsufficientBytes);
-        let len: usize = map!(@err num.try_into(); InvalidLength);
-        let records = (0..len)
-            .map(|_| D::deserialize(view))
-            .collect::<Result<Vec<_>>>()?
-            .into();
+        let num: E = view.read().ok_or(InsufficientBytes)?;
+        let len = num.try_into().map_err(|_| InvalidLength)?;
 
-        Ok(records)
+        (0..len)
+            .map(|_| D::deserialize(view))
+            .collect::<Result<Vec<_>>>()
+            .map(|data| Record::new(data))
     }
 }
 
@@ -109,15 +112,4 @@ impl<L, T> DerefMut for Record<L, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.data
     }
-}
-
-#[test]
-fn test_name() {
-    let record: Record<u8, String> = String::from("HelloWorld").into();
-    assert_eq!(record.len(), 10);
-
-    let mut buf = [0; 16].into();
-    DataType::serialize(record, &mut buf);
-    // One byte for length, 10 bytes for string
-    assert_eq!(buf.offset, 11); 
 }

@@ -6,7 +6,9 @@ macro_rules! impl_data_type_for {
             #[inline]
             fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) { view.write(self).unwrap(); }
             #[inline]
-            fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self>{ Ok(map!(@opt view.read(); InsufficientBytes)) }
+            fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self>{
+                view.read().ok_or(ErrorKind::InsufficientBytes)
+            }
         }
     )*);
 }
@@ -23,8 +25,9 @@ impl DataType for bool {
         view.write::<u8>(self.into()).unwrap();
     }
     fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self> {
-        let num: u8 = map!(@opt view.read(); InsufficientBytes);
-        Ok(num != 0)
+        view.read::<u8>()
+            .map(|n| n != 0)
+            .ok_or(ErrorKind::InsufficientBytes)
     }
 }
 
@@ -33,7 +36,9 @@ impl DataType for char {
         view.write::<u32>(self.into()).unwrap();
     }
     fn deserialize(view: &mut DataView<impl AsRef<[u8]>>) -> Result<Self> {
-        let num: u32 = map!(@opt view.read(); InsufficientBytes);
-        Ok(map!(@opt char::from_u32(num); InvalidData))
+        view
+            .read::<u32>()
+            .ok_or(ErrorKind::InsufficientBytes)
+            .and_then(|num| char::from_u32(num).ok_or(ErrorKind::InvalidData))
     }
 }

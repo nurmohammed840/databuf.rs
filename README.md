@@ -1,6 +1,6 @@
 [Doc](https://docs.rs/bin-layout/)
 
-Very fast!and flexible, This library used to serialize and deserialize data in binary format.
+Very fast! And flexible, This library used to serialize and deserialize data in binary format.
 
 Inspaired by [bincode](https://github.com/bincode-org/bincode), But much more flexible.
 

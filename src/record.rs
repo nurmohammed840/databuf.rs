@@ -7,8 +7,27 @@ use core::{
 };
 use data_view::Endian;
 
-/// This is a utility struct,
-/// that allows to reading and writing different variants length records.
+/// This utility struct use for serialize or deserialize variable length records.
+///
+/// By default, `String` or `Vec<T>` are encoded with their length value first,
+/// Size of size is `u32`
+///
+/// But this utility struct allow you to encode different length size, for example: `u8`, `u16`, `usize` etc...
+///
+/// ### Example
+///
+/// ```rust
+/// use bin_layout::{DataType, Record};
+/// 
+/// let record: Record<u8, String> = String::from("HelloWorld").into();
+/// assert_eq!(record.len(), 10);
+/// 
+/// let mut buf = [0; 16].into();
+/// DataType::serialize(record, &mut buf);
+/// 
+/// // One byte for length, 10 bytes for string
+/// assert_eq!(buf.offset, 11);  // 11 bytes written to buffer
+/// ```
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Record<Len, Type> {
     pub data: Type,
@@ -90,4 +109,15 @@ impl<L, T> DerefMut for Record<L, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.data
     }
+}
+
+#[test]
+fn test_name() {
+    let record: Record<u8, String> = String::from("HelloWorld").into();
+    assert_eq!(record.len(), 10);
+
+    let mut buf = [0; 16].into();
+    DataType::serialize(record, &mut buf);
+    // One byte for length, 10 bytes for string
+    assert_eq!(buf.offset, 11); 
 }

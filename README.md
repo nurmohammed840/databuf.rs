@@ -11,7 +11,7 @@ If you want to use big endian, you can set `BE` features flag. And for native en
 
 ```toml
 [dependencies]
-bin-layout = { version = "0.1", features = ["BE"] }
+bin-layout = { version = "1", features = ["BE"] }
 ```
 
 ### Data Type
@@ -44,7 +44,8 @@ let company = Company {
 let mut view = [0; 64].into();
 company.serialize(&mut view);
 
-view.offset = 0;
+assert_eq!(view.offset, 41); // 41 bytes were written
+view.offset = 0; // reset offset
 
 let company = Company::deserialize(&mut view).unwrap();
 ```

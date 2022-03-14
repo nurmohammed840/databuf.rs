@@ -2,7 +2,10 @@ use crate::*;
 
 macro_rules! impl_data_type_for_typle {
     [$(($($name: ident : $idx: tt),*)),*]  => ($(
-        impl<$($name: DataType,)*> DataType for ($($name,)*) {
+        impl<$($name,)*> DataType for ($($name,)*)
+        where
+            $($name: DataType,)*
+        {
             #[inline]
             fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) { $(self.$idx.serialize(view);)* }
             #[inline]
@@ -10,7 +13,6 @@ macro_rules! impl_data_type_for_typle {
         }
     )*);
 }
-
 impl_data_type_for_typle!(
     (),
     (A:0, B:1),

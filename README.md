@@ -29,6 +29,7 @@ use bin_layout::DataType;
 
 #[derive(DataType)]
 struct Car { name: String, year: u16, is_new: bool }
+
 #[derive(DataType)]
 struct Company { name: String, cars: Vec<Car> }
 

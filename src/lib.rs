@@ -2,22 +2,27 @@
 #![cfg_attr(feature = "nightly", feature(array_try_map))]
 #![doc = include_str!("../README.md")]
 
+mod record;
 mod types;
+
 use core::convert::TryInto;
 
-pub mod utils;
-pub use data_view::{DataView, View};
+pub use data_view;
+pub use data_view::DataView;
 pub use derive::*;
+pub use record::Record;
 /// Shortcut for `Result<T, bin_layout::ErrorKind>`
 pub type Result<T> = core::result::Result<T, ErrorKind>;
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorKind {
     InvalidType,
-    InvalidValue,
+    InvalidData,
+    InvalidInput,
     InvalidLength,
     Unsupported,
-    NotEnoughData,
+    InsufficientBytes,
+    Other,
 }
 
 macro_rules! map {

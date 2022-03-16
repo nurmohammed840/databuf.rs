@@ -1,6 +1,6 @@
 [package]
 name = "bin-layout"
-version = "1.0.0"
+version = "2.0.0"
 edition = "2021"
 
 description = "This library used to serialize and deserialize data in binary format."
@@ -11,9 +11,8 @@ keywords = ["binary", "encode", "decode", "serialize", "deserialize"]
 
 [features]
 nightly = []
-BE = ["data-view/BE"]
-NE = ["data-view/NE"]
+BE = []
+NE = []
 
 [dependencies]
-data-view = "5"
-derive = { path = "./derive", version = "0.1" }
+derive = { path = "./derive", version = "0.2" }

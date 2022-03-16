@@ -16,7 +16,7 @@ bin-layout = { version = "1", features = ["BE"] }
 
 ### Data Type
 
-The library is very flexible and easy to use. The only trait you need to implement is [DataType](https://docs.rs/bin-layout/latest/bin_layout/trait.DataType.html).
+The only trait you need to implement is [DataType](https://docs.rs/bin-layout/latest/bin_layout/trait.DataType.html).
 
 All [primitive types](https://doc.rust-lang.org/stable/rust-by-example/primitives.html) implement this trait.
 
@@ -28,24 +28,25 @@ And For collection types, `Vec` and `String` are supported. They are encoded wit
 use bin_layout::DataType;
 
 #[derive(DataType)]
-struct Car { name: String, year: u16, is_new: bool }
+struct Car<'a> {
+    name: &'a str,  // Zero-Copy deserialization
+    year: u16,
+    is_new: bool,
+}
 
 #[derive(DataType)]
-struct Company { name: String, cars: Vec<Car> }
+struct Company<'a> { name: String, cars: Vec<Car<'a>> }
 
 let company = Company {
     name: "Tesla".into(),
     cars: vec![
-        Car { name: "Model S".into(), year: 2018, is_new: true },
-        Car { name: "Model X".into(), year: 2019, is_new: false },
+        Car { name: "Model S", year: 2018, is_new: true },
+        Car { name: "Model X", year: 2019, is_new: false },
     ],
 };
 
-let mut view = [0; 64].into();
-company.serialize(&mut view);
+let mut buf = [0; 64];
 
-assert_eq!(view.offset, 41); // 41 bytes were written
-view.offset = 0; // reset offset
-
-let company = Company::deserialize(&mut view).unwrap();
+company.encode(buf.as_mut());
+let company = Company::decode(buf.as_ref()).unwrap();
 ```

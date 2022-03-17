@@ -4,9 +4,9 @@ macro_rules! impl_data_type_for {
     [$($rty:ty)*] => ($(
         impl DataType<'_> for $rty {
             #[inline]
-            fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) { view.write(self).unwrap(); }
+            fn serialize(self, view: &mut View<impl AsMut<[u8]>>) { view.write(self).unwrap(); }
             #[inline]
-            fn deserialize(view: &mut DataView<&[u8]>) -> Result<Self>{ view.read().ok_or(InsufficientBytes) }
+            fn deserialize(view: &mut View<&[u8]>) -> Result<Self>{ view.read().ok_or(InsufficientBytes) }
         }
     )*);
 }
@@ -20,23 +20,21 @@ impl_data_type_for!(
 
 impl DataType<'_> for bool {
     #[inline]
-    fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) {
-        view.write::<u8>(self.into()).unwrap();
+    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
+        u8::serialize(self.into(), view)
     }
     #[inline]
-    fn deserialize(view: &mut DataView<&[u8]>) -> Result<Self> {
-        view.read().map(|n: u8| n != 0).ok_or(InsufficientBytes)
+    fn deserialize(view: &mut View<&[u8]>) -> Result<Self> {
+        u8::deserialize(view).map(|v| v != 0)
     }
 }
-
 impl DataType<'_> for char {
     #[inline]
-    fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) {
-        view.write::<u32>(self.into()).unwrap();
+    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
+        u32::serialize(self.into(), view)
     }
     #[inline]
-    fn deserialize(view: &mut DataView<&[u8]>) -> Result<Self> {
-        let num: u32 = view.read().ok_or(InsufficientBytes)?;
-        char::from_u32(num).ok_or(InvalidChar)
+    fn deserialize(view: &mut View<&[u8]>) -> Result<Self> {
+        char::from_u32(u32::deserialize(view)?).ok_or(InvalidChar)
     }
 }

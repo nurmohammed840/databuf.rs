@@ -36,14 +36,14 @@ fn derive_inner(input: TokenStream) -> Result<TokenStream> {
 
             gen.generate_fn("serialize")
                 .with_self_arg(FnSelfArg::TakeSelf)
-                .with_arg("view", "&mut bin_layout::DataView<impl AsMut<[u8]>>")
+                .with_arg("view", "&mut bin_layout::View<impl AsMut<[u8]>>")
                 .body(|fn_body| {
                     fn_body.push_parsed(ser)?;
                     Ok(())
                 })?;
 
             gen.generate_fn("deserialize")
-                .with_arg("view", "&mut bin_layout::DataView<&'de [u8]>")
+                .with_arg("view", "&mut bin_layout::View<&'de [u8]>")
                 .with_return_type("bin_layout::Result<Self>")
                 .body(|fn_body| {
                     fn_body.push_parsed(de)?;

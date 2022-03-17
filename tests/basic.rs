@@ -1,4 +1,4 @@
-// use bin_layout::{DataType, DataView, ErrorKind, Record};
+// use bin_layout::{DataType, View, ErrorKind, Record};
 
 // use Subject::*;
 // #[derive(PartialEq, Debug, Clone)]
@@ -10,7 +10,7 @@
 // }
 
 // impl<'de> DataType<'de> for Subject<'de> {
-//     fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) {
+//     fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
 //         let code: u16 = match self {
 //             Math => 302,
 //             Physics => 317,
@@ -22,7 +22,7 @@
 //         };
 //         code.serialize(view);
 //     }
-//     fn deserialize(view: &mut DataView<&'de [u8]>) -> Result<Self, ErrorKind> {
+//     fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self, ErrorKind> {
 //         let name = match u16::deserialize(view)? {
 //             302 => Math,
 //             317 => Physics,
@@ -62,11 +62,11 @@
 
 //     let mut buf = [0; 64];
 
-//     let mut writer = DataView::new(buf.as_mut());
+//     let mut writer = View::new(buf.as_mut());
 //     old_class.clone().serialize(&mut writer);
 //     assert_eq!(writer.offset, 49); // 49 bytes written
 
-//     let mut reader = DataView::new(buf.as_ref());
+//     let mut reader = View::new(buf.as_ref());
 //     let new_class: Class = DataType::deserialize(&mut reader).unwrap();
 //     assert_eq!(reader.offset, 49); // 49 bytes read
 

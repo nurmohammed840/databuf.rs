@@ -52,33 +52,23 @@ impl_endian_for!(
 );
 
 #[inline]
-pub unsafe fn num_from<E: Endian>(src: *const u8) -> E {
-    #[cfg(all(target_endian = "little", not(any(feature = "BE", feature = "NE"))))]
-    return E::from_bytes_ne(src);
+pub unsafe fn write_num<E: Endian>(src: *const u8) -> E {
     #[cfg(all(target_endian = "big", not(any(feature = "BE", feature = "NE"))))]
     return E::from_bytes_le(src);
     // ---------------------------------------------
-    #[cfg(all(target_endian = "big", feature = "BE"))]
-    return E::from_bytes_ne(src);
     #[cfg(all(target_endian = "little", feature = "BE"))]
     return E::from_bytes_be(src);
     // ---------------------------------------------
-    #[cfg(feature = "NE")] // Native Endian
     return E::from_bytes_ne(src);
 }
 
 #[inline]
-pub unsafe fn num_write_at<E: Endian>(num: E, dst: *mut u8) {
-    #[cfg(all(target_endian = "little", not(any(feature = "BE", feature = "NE"))))]
-    num.write_at_ne(dst);
+pub unsafe fn read_num<E: Endian>(num: E, dst: *mut u8) {
     #[cfg(all(target_endian = "big", not(any(feature = "BE", feature = "NE"))))]
-    num.write_at_le(dst);
+    return num.write_at_le(dst);
     // ---------------------------------------------
-    #[cfg(all(target_endian = "big", feature = "BE"))]
-    num.write_at_ne(dst);
     #[cfg(all(target_endian = "little", feature = "BE"))]
-    num.write_at_be(dst);
+    return num.write_at_be(dst);
     // ---------------------------------------------
-    #[cfg(feature = "NE")] // Native Endian
-    num.write_at_ne(dst);
+    return num.write_at_ne(dst);
 }

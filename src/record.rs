@@ -1,5 +1,5 @@
 use super::*;
-use crate::view::{DataView, Endian};
+use crate::view::{View, Endian};
 use core::{
     fmt,
     fmt::Debug,
@@ -16,7 +16,7 @@ use ErrorKind::*;
 /// ### Example
 ///
 /// ```rust
-/// use bin_layout::{DataType, DataView, Record};
+/// use bin_layout::{DataType, View, Record};
 ///
 /// let record: Record<u8, &str> = "HelloWorld".into();
 /// assert_eq!(record.len(), 10);
@@ -54,25 +54,23 @@ macro_rules! impls {
             usize: TryFrom<L>,
         {
             #[inline]
-            fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) {
+            fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
                 let len: L = self.data.len().try_into().unwrap();
                 view.write(len).unwrap(); // length
-
                 view.write_slice(self.data).unwrap();
             }
-
             #[inline]
             $deserialize
         }
     };
 }
 
-impls!(&, 'de, [u8] => fn deserialize(view: &mut DataView<&'de [u8]>) -> Result<Self> {
+impls!(&, 'de, [u8] => fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> {
     let len = read_len(view)?;
     view.read_slice(len).map(|bytes| bytes.into()).ok_or(InsufficientBytes)
 });
 
-impls!(String => fn deserialize(view: &mut DataView<&'de [u8]>) -> Result<Self> {
+impls!(String => fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> {
     let bytes: Record<L, &[u8]> = Record::deserialize(view)?;
 
     String::from_utf8(bytes.to_vec())
@@ -80,7 +78,7 @@ impls!(String => fn deserialize(view: &mut DataView<&'de [u8]>) -> Result<Self> 
         .map_err(|_| InvalidUtf8)
 });
 
-impls!(&, 'de, str => fn deserialize(view: &mut DataView<&'de [u8]>) -> Result<Self> {
+impls!(&, 'de, str => fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> {
     let bytes: Record<L, &[u8]> = Record::deserialize(view)?;
 
     core::str::from_utf8(bytes.data)
@@ -96,7 +94,7 @@ where
     usize: TryFrom<L>,
 {
     #[inline]
-    fn serialize(self, view: &mut DataView<impl AsMut<[u8]>>) {
+    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
         let len: L = self.data.len().try_into().unwrap();
         view.write(len).unwrap(); // length
 
@@ -106,7 +104,7 @@ where
     }
 
     #[inline]
-    fn deserialize(view: &mut DataView<&'de [u8]>) -> Result<Self> {
+    fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> {
         let len = read_len(view)?;
         (0..len)
             .map(|_| T::deserialize(view))
@@ -148,7 +146,7 @@ impl<L, T> DerefMut for Record<L, T> {
 // ---------------------------------------------------------------------------------
 
 #[inline]
-fn read_len<L: Endian>(view: &mut DataView<&[u8]>) -> Result<usize>
+fn read_len<L: Endian>(view: &mut View<&[u8]>) -> Result<usize>
 where
     usize: TryFrom<L>,
 {

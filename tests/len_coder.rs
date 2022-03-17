@@ -25,7 +25,7 @@ fn test_lencoder_u22() {
 #[allow(unused)]
 macro_rules! debug_len_coder {
     [$ty:tt, $num:expr] => {
-        let mut buf = [0; 3];
+        let mut buf = [0; 4];
         $ty($num).encode(&mut buf);
         let mut reader = buf.as_ref().into();
         let decoded: $ty = DataType::deserialize(&mut reader).unwrap();
@@ -42,5 +42,6 @@ macro_rules! debug_len_coder {
 #[test]
 #[allow(unused)]
 fn debug_playground() {
-    debug_len_coder!(U15, 32767);
+    println!("0x{:x}", 2_u64.pow(21) - 1);
+    println!("0x{:x}", 2_u64.pow(29) - 1);
 }

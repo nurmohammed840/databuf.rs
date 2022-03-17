@@ -20,7 +20,7 @@ The only trait you need to implement is [DataType](https://docs.rs/bin-layout/la
 
 All [primitive types](https://doc.rust-lang.org/stable/rust-by-example/primitives.html) implement this trait.
 
-And For collection types, `Vec` and `String` are supported. They are encoded with their length `u32` value first, Following by each entry of the collection.
+`Vec`, `String`, `&[T]`, `&str` etc.. are encoded with their length value (`U22`) first, Following by each entry.
 
 ### Example
 
@@ -50,3 +50,31 @@ let mut buf = [0; 64];
 company.encode(buf.as_mut());
 let company = Company::decode(buf.as_ref()).unwrap();
 ```
+
+
+# Dynamic Length Size
+
+Support types are `U15`, `U22` and `U29`.
+
+Default is `U22`. But you override it by setting `U15`, `U29` or `U32` in features flag.
+  
+Those types are used to represent the length of a variable-length record.
+ 
+Encoding algorithm is very simple, If  LSB (least significant bit) is set, then
+read the next byte, last byte does not contain LSB.
+ 
+For example, Binary representation of `0x_C0DE` is `0x_11_0000001_1011110`
+ 
+`U22(0x_C0DE)` is encoded in 3 bytes:
+ 
+```yml
+1st byte: 1_1011110      # LSB is 1, so read next byte
+2nd byte: 1_0000001      # LSB is 1, continue reading
+3rd byte:        11
+```
+
+# Fixed Size
+
+`Record` can be used to represent fixed-size records. 
+
+It accepts a generic type of length (`u8`, `u16` or `u32`) and a type of variable-length record type (`Vec<T>`, `String` etc..)

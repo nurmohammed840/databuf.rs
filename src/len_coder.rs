@@ -1,4 +1,21 @@
-#![allow(warnings)]
+
+// Range of bytes of `U15` are,
+// 1. 0..127         represented by 1 byte
+// 2. 128..0x7FFF    represented by 2 bytes
+
+// Range of bytes of `U22` are,
+//
+// 1. 0..127
+// 2. 128..0x3FFF
+// 3. 0x4000..0x3FFFFF
+
+// Range of bytes of `U29` are,
+//
+// 1. 0..127
+// 2. 128..0x3FFF
+// 3. 0x4000..0x1FFFFF
+// 4. 0x400000..0x1FFFFFFF
+
 use crate::*;
 
 macro_rules! def {
@@ -24,11 +41,12 @@ def!(
     MAX: 0x7FFF,
     fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
         let num = self.0;
-        // if `num` is less than 128, we can use one byte to store the length.
+        let b1 = num as u8;
         if num < 128 {
-            (num as u8).serialize(view);
+            // No LSB set (`b1`). bcs We checked `num` is less then `128`
+            b1.serialize(view);
         } else {
-            let b1 = 0x80 | (num as u8); // 7 bits with LSB is set.
+            let b1 = 0x80 | b1; // 7 bits with LSB is set.
             let b2 = (num >> 7) as u8; // next 8 bits
             view.write_slice([b1, b2]).unwrap();
         }
@@ -37,9 +55,10 @@ def!(
         let mut num = u8::deserialize(view)? as u16;
         // if LSB is set, read another byte.
         if num >> 7 == 1 {
-            num &= 0x7F; // `x` <- get 7 MSB
+            num &= 0x7F; // `x` <- get 7 bits
+
             let snd = u8::deserialize(view)? as u16;
-            num |= snd << 7; // x <- push 8 bits from `x`
+            num |= snd << 7; // x <- push 8 bits
         }
         Ok(Self(num))
     }
@@ -50,18 +69,19 @@ def!(
     MAX: 0x3FFFFF,
     fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
         let num = self.0;
-        // if `num` is less than 128, we can use one byte to store the length.
+        let b1 = num as u8;
         if num < 128 {
-            (num as u8).serialize(view);
+            // No LSB set (`b1`). bcs We checked `num` is less then `128`
+            b1.serialize(view);
         } else {
-            let b1 = 0x80 | (num as u8); // 7 bits with LSB is set.
-            // if `num` is less than 16384, we can use two bytes to store the length.
+            let b1 = 0x80 | b1; // set LSB
+            let b2 = (num >> 7) as u8; 
             if num < 0x4000 {
-                let b2 = (num >> 7) as u8; // next 7 bits with LSB is not set.
+                // No LSB set (`b2`). bcs We checked `num` is less then `0x4000`
                 view.write_slice([b1, b2]).unwrap();
             } else {
-                let b2 = 0x80 | ((num >> 7) as u8); // next 7 bits with LSB is set.
-                let b3 = (num >> 14) as u8; // next 8 bits
+                let b2 = 0x80 | b2; //  set LSB
+                let b3 = (num >> 14) as u8;  // read full 8 bits
                 view.write_slice([b1, b2, b3]).unwrap();
             }
         }
@@ -70,14 +90,14 @@ def!(
         let mut num = u8::deserialize(view)? as u32;
         // if LSB is set, read another byte.
         if num >> 7 == 1 {
-            num &= 0x7F; // `x` <- get 7 MSB
+            num &= 0x7F; // x <- get 7 bits
 
             let snd = u8::deserialize(view)? as u32;
-            num |= (snd & 0x7F) << 7; // x <- push 7 MSB from `y`
+            num |= (snd & 0x7F) << 7; // x <- push 7 bits from `snd`
 
             if snd >> 7 == 1 {
                 let trd = u8::deserialize(view)? as u32;
-                num |= trd << 14; // x <- push 8 MSB from `z`
+                num |= trd << 14; // x <- push 8 bits from `trd`
             }
         }
         Ok(Self(num))
@@ -94,42 +114,48 @@ def!(
     MAX: 0x1FFFFFFF,
     fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
         let num = self.0;
-        let a1 = (num as u8);
+        let b1 = num as u8;
         if num < 128 {
-            a1.serialize(view);
-        }
-        else {
-            let a2 = (num >> 7) as u8;
+            b1.serialize(view);
+        } else {
+            let b1 = 0x80 | b1;
+            let b2 = (num >> 7) as u8;
+            
             if num < 0x4000 {
-                view.write_slice([0x80 | a1, a2]).unwrap();
-            }
-            else {
-                let a3 = (num >> 14) as u8;
+                view.write_slice([b1, b2]).unwrap();
+            } else {
+                let b2 = 0x80 | b2;
+                let b3 = (num >> 14) as u8;
+                
                 if num < 0x200000 {
-                    view.write_slice([0x80 | a1, 0x80 | a2, a3]).unwrap();
+                    view.write_slice([b1, b2, b3]).unwrap();
                 } else {
-                    let a4 = (num >> 21) as u8;
-                    view.write_slice([0x80 | a1, 0x80 | a2, 0x80 | a3, a4]).unwrap();
+                    let b3 = 0x80 | b3;
+                    let b4 = (num >> 21) as u8;
+                    view.write_slice([b1, b2, b3, b4]).unwrap();
                 }
             }
         }
     },
     fn deserialize(view: &mut View<& [u8]>) -> Result<Self> {
-        todo!()
+        let mut num = u8::deserialize(view)? as u32;
+        // if LSB is set, read another byte.
+        if num >> 7 == 1 {
+            num &= 0x7F; 
 
-        // let mut num = u8::deserialize(view)? as u32;
-        // // if LSB is set, read another byte.
-        // if num >> 7 == 1 {
-        //     num &= 0x7F; // `x` <- get 7 MSB
+            let snd = u8::deserialize(view)? as u32;
+            num |= (snd & 0x7F) << 7; 
 
-        //     let snd = u8::deserialize(view)? as u32;
-        //     num |= (snd & 0x7F) << 7; // x <- push 7 MSB from `y`
+            if snd >> 7 == 1 {
+                let trd = u8::deserialize(view)? as u32;
+                num |= (trd & 0x7F) << 14;
 
-        //     if snd >> 7 == 1 {
-        //         let trd = u8::deserialize(view)? as u32;
-        //         num |= trd << 14; // x <- push 8 MSB from `z`
-        //     }
-        // }
-        // Ok(Self(num))
+                if trd >> 7 == 1 {
+                    let fth = u8::deserialize(view)? as u32;
+                    num |= fth << 21;
+                }
+            }
+        }
+        Ok(Self(num))
     }
 );

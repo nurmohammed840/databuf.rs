@@ -4,10 +4,10 @@ macro_rules! impls {
     [$($tys:tt),* => $deserialize:item] => {
         impl<'de> DataType<'de> for $($tys)* {
             #[inline]
-            fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
+            fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> {
                 let len: u32 = self.len().try_into().unwrap();
-                view.write(len).unwrap();
-                view.write_slice(self).unwrap();
+                view.write(len)?;
+                view.write_slice(self)
             }
             #[inline]
             $deserialize
@@ -17,7 +17,7 @@ macro_rules! impls {
 
 impls!(&, 'de, [u8] => fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> {
     let len = u32::deserialize(view)?;
-    view.read_slice(len as usize).ok_or(InsufficientBytes)
+    view.read_slice(len as usize)
 });
 impls!(&, 'de, str => fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> {
     let bytes: &'de [u8] = DataType::deserialize(view)?;
@@ -31,13 +31,14 @@ impls!(String => fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> {
 
 impl<'de, T: DataType<'de>> DataType<'de> for Vec<T> {
     #[inline]
-    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
+    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> {
         let len: u32 = self.len().try_into().unwrap();
         view.write(len).unwrap();
 
         for item in self {
-            item.serialize(view);
+            item.serialize(view)?;
         }
+        Ok(())
     }
     #[inline]
     fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> {

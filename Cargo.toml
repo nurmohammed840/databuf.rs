@@ -10,6 +10,7 @@ license = "Apache-2.0"
 keywords = ["binary", "encode", "decode", "serialize", "deserialize"]
 
 [features]
+no-overflow-checks = []
 nightly = []
 BE = []
 NE = []

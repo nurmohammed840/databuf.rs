@@ -11,16 +11,8 @@ If you want to use big endian, you can set `BE` features flag. And for native en
 
 ```toml
 [dependencies]
-bin-layout = { version = "1", features = ["BE"] }
+bin-layout = { version = "2", features = ["BE"] }
 ```
-
-### Data Type
-
-The only trait you need to implement is [DataType](https://docs.rs/bin-layout/latest/bin_layout/trait.DataType.html).
-
-All [primitive types](https://doc.rust-lang.org/stable/rust-by-example/primitives.html) implement this trait.
-
-`Vec`, `String`, `&[T]`, `&str` etc.. are encoded with their length value (`U22`) first, Following by each entry.
 
 ### Example
 
@@ -47,16 +39,24 @@ let company = Company {
 
 let mut buf = [0; 64];
 
-company.encode(buf.as_mut());
+company.encode(buf.as_mut()).unwrap();
 let company = Company::decode(buf.as_ref()).unwrap();
 ```
 
+### Data Type
 
-# Dynamic Length Size
+The only trait you need to implement is [DataType](https://docs.rs/bin-layout/latest/bin_layout/trait.DataType.html).
+
+All [primitive types](https://doc.rust-lang.org/stable/rust-by-example/primitives.html) implement this trait.
+
+`Vec`, `String`, `&[T]`, `&str` etc.. are encoded with their length value (`U22`) first, Following by each entry.
+
+
+#### Dynamic Length Size
 
 Support types are `U15`, `U22` and `U29`.
 
-Default is `U22`. But you override it by setting `U15`, `U29` or `U32` in features flag.
+Default is `U22`. But you override it by setting `LF15`, `L29` or `U32` in features flag.
   
 Those types are used to represent the length of a variable-length record.
  
@@ -73,7 +73,7 @@ For example, Binary representation of `0x_C0DE` is `0x_11_0000001_1011110`
 3rd byte:        11
 ```
 
-# Fixed Size
+#### Fixed Size
 
 `Record` can be used to represent fixed-size records. 
 

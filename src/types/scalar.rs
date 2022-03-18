@@ -4,9 +4,11 @@ macro_rules! impl_data_type_for {
     [$($rty:ty)*] => ($(
         impl DataType<'_> for $rty {
             #[inline]
-            fn serialize(self, view: &mut View<impl AsMut<[u8]>>) { view.write(self).unwrap(); }
+            fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> { 
+                view.write(self)
+            }
             #[inline]
-            fn deserialize(view: &mut View<&[u8]>) -> Result<Self>{ view.read().ok_or(InsufficientBytes) }
+            fn deserialize(view: &mut View<&[u8]>) -> Result<Self> { view.read() }
         }
     )*);
 }
@@ -20,7 +22,7 @@ impl_data_type_for!(
 
 impl DataType<'_> for bool {
     #[inline]
-    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
+    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> {
         u8::serialize(self.into(), view)
     }
     #[inline]
@@ -30,7 +32,7 @@ impl DataType<'_> for bool {
 }
 impl DataType<'_> for char {
     #[inline]
-    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
+    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> {
         u32::serialize(self.into(), view)
     }
     #[inline]

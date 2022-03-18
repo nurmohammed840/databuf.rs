@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 use core::fmt::Debug;
 
 /// This trait contains many unsafe methods for efficiently reading and writing data.

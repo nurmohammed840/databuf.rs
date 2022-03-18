@@ -7,7 +7,7 @@ use bin_layout::{
 fn test_lencoder_u15() {
     for num in 0..=U15::MAX {
         let mut buf = [0; 2];
-        U15(num).encode(&mut buf);
+        U15(num).encode(&mut buf).unwrap();
         assert_eq!(num, U15::decode(&buf).unwrap().0);
     }
 }
@@ -16,7 +16,7 @@ fn test_lencoder_u15() {
 fn test_lencoder_u22() {
     for num in 0..=U22::MAX {
         let mut buf = [0; 3];
-        U22(num).encode(&mut buf);
+        U22(num).encode(&mut buf).unwrap();
         assert_eq!(num, U22::decode(&buf).unwrap().0);
     }
 }

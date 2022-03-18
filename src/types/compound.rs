@@ -9,7 +9,10 @@ macro_rules! impl_data_type_for_typle {
                 $($name: DataType<'de>,)*
             {
                 #[inline]
-                fn serialize(self, view: &mut View<impl AsMut<[u8]>>) { $(self.$idx.serialize(view);)* }
+                fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> { 
+                    $(self.$idx.serialize(view)?;)*
+                    Ok(())
+                }
                 #[inline]
                 fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> { Ok(($($name::deserialize(view)?),*)) }
             }
@@ -29,10 +32,11 @@ impl_data_type_for_typle!(
 
 impl<'de, T: DataType<'de>, const N: usize> DataType<'de> for [T; N] {
     #[inline]
-    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
+    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> {
         for item in self {
-            item.serialize(view);
+            item.serialize(view)?;
         }
+        Ok(())
     }
     #[inline]
     fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> {
@@ -49,13 +53,12 @@ impl<'de, T: DataType<'de>, const N: usize> DataType<'de> for [T; N] {
 
 impl<'de, const N: usize> DataType<'de> for &'de [u8; N] {
     #[inline]
-    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
-        view.write_slice(self).unwrap()
+    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> {
+        view.write_slice(self)
     }
     #[inline]
     fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> {
         view.read_slice(N)
             .map(|bytes| unsafe { bytes.try_into().unwrap_unchecked() })
-            .ok_or(InsufficientBytes)
     }
 }

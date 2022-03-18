@@ -1,5 +1,5 @@
 use super::*;
-use crate::view::{View, Endian};
+use crate::view::{Endian, View};
 use core::{
     fmt,
     fmt::Debug,
@@ -54,10 +54,10 @@ macro_rules! impls {
             usize: TryFrom<L>,
         {
             #[inline]
-            fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
+            fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> {
                 let len: L = self.data.len().try_into().unwrap();
-                view.write(len).unwrap(); // length
-                view.write_slice(self.data).unwrap();
+                view.write(len)?; // length
+                view.write_slice(self.data)
             }
             #[inline]
             $deserialize
@@ -67,7 +67,7 @@ macro_rules! impls {
 
 impls!(&, 'de, [u8] => fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> {
     let len = read_len(view)?;
-    view.read_slice(len).map(|bytes| bytes.into()).ok_or(InsufficientBytes)
+    view.read_slice(len).map(|bytes| bytes.into())
 });
 
 impls!(String => fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> {
@@ -94,13 +94,14 @@ where
     usize: TryFrom<L>,
 {
     #[inline]
-    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
+    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> {
         let len: L = self.data.len().try_into().unwrap();
-        view.write(len).unwrap(); // length
+        view.write(len)?; // length
 
         for record in self.data {
-            record.serialize(view);
+            record.serialize(view)?;
         }
+        Ok(())
     }
 
     #[inline]
@@ -151,6 +152,5 @@ where
     usize: TryFrom<L>,
 {
     view.read::<L>()
-        .ok_or(InsufficientBytes)
         .and_then(|num| num.try_into().map_err(|_| InvalidLength))
 }

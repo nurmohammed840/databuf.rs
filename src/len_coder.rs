@@ -39,16 +39,16 @@ macro_rules! def {
 def!(
     U15(u16),
     MAX: 0x7FFF,
-    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
+    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> {
         let num = self.0;
         let b1 = num as u8;
         if num < 128 {
             // No LSB set (`b1`). bcs We checked `num` is less then `128`
-            b1.serialize(view);
+            b1.serialize(view)
         } else {
             let b1 = 0x80 | b1; // 7 bits with LSB is set.
             let b2 = (num >> 7) as u8; // next 8 bits
-            view.write_slice([b1, b2]).unwrap();
+            view.write_slice([b1, b2])
         }
     },
     fn deserialize(view: &mut View<&[u8]>) -> Result<Self> {
@@ -67,22 +67,22 @@ def!(
 def!(
     U22(u32),
     MAX: 0x3FFFFF,
-    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
+    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> {
         let num = self.0;
         let b1 = num as u8;
         if num < 128 {
             // No LSB set (`b1`). bcs We checked `num` is less then `128`
-            b1.serialize(view);
+            b1.serialize(view)
         } else {
             let b1 = 0x80 | b1; // set LSB
             let b2 = (num >> 7) as u8; 
             if num < 0x4000 {
                 // No LSB set (`b2`). bcs We checked `num` is less then `0x4000`
-                view.write_slice([b1, b2]).unwrap();
+                view.write_slice([b1, b2])
             } else {
                 let b2 = 0x80 | b2; //  set LSB
                 let b3 = (num >> 14) as u8;  // read full 8 bits
-                view.write_slice([b1, b2, b3]).unwrap();
+                view.write_slice([b1, b2, b3])
             }
         }
     },
@@ -112,27 +112,27 @@ fn test_name() {
 def!(
     U29(u32),
     MAX: 0x1FFFFFFF,
-    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) {
+    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> {
         let num = self.0;
         let b1 = num as u8;
         if num < 128 {
-            b1.serialize(view);
+            b1.serialize(view)
         } else {
             let b1 = 0x80 | b1;
             let b2 = (num >> 7) as u8;
             
             if num < 0x4000 {
-                view.write_slice([b1, b2]).unwrap();
+                view.write_slice([b1, b2])
             } else {
                 let b2 = 0x80 | b2;
                 let b3 = (num >> 14) as u8;
                 
                 if num < 0x200000 {
-                    view.write_slice([b1, b2, b3]).unwrap();
+                    view.write_slice([b1, b2, b3])
                 } else {
                     let b3 = 0x80 | b3;
                     let b4 = (num >> 21) as u8;
-                    view.write_slice([b1, b2, b3, b4]).unwrap();
+                    view.write_slice([b1, b2, b3, b4])
                 }
             }
         }

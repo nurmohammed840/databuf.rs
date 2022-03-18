@@ -1,9 +1,8 @@
 mod endian;
-
-use core::mem::{size_of, MaybeUninit};
-use core::ptr;
-pub(crate) use endian::Endian;
+use crate::*;
 use endian::*;
+
+pub(crate) use endian::Endian;
 
 /// This struct represents a data view for reading and writing data in a byte array.
 /// When read/write, This increment current offset by the size of the value.
@@ -45,11 +44,11 @@ impl<'a> View<&'a [u8]> {
     /// assert_eq!(view.read_slice(3), None);
     /// ```
     #[inline]
-    pub fn read_slice(&mut self, len: usize) -> Option<&'a [u8]> {
+    pub fn read_slice(&mut self, len: usize) -> Result<&'a [u8]> {
         let total_len = self.offset + len;
-        let slice = self.data.get(self.offset..total_len)?;
+        let slice = self.data.get(self.offset..total_len).ok_or(InsufficientBytes)?;
         self.offset = total_len;
-        Some(slice)
+        Ok(slice)
     }
 }
 
@@ -69,15 +68,15 @@ impl<T: AsRef<[u8]>> View<T> {
     /// assert_eq!(view.read::<u32>(), None);
     /// ```
     #[inline]
-    pub fn read<E: Endian>(&mut self) -> Option<E> {
+    pub fn read<E: Endian>(&mut self) -> Result<E> {
         let data = self.data.as_ref();
         let total_len = self.offset + size_of::<E>();
         if total_len > data.len() {
-            return None;
+            return Err(InsufficientBytes);
         }
         let num = unsafe { write_num(data.as_ptr().add(self.offset)) };
         self.offset = total_len;
-        Some(num)
+        Ok(num)
     }
 
     /// Create a buffer and returns it, from the current offset.
@@ -93,11 +92,11 @@ impl<T: AsRef<[u8]>> View<T> {
     /// assert_eq!(view.read_buf::<3>(), None);
     /// ```
     #[inline]
-    pub fn read_buf<const N: usize>(&mut self) -> Option<[u8; N]> {
+    pub fn read_buf<const N: usize>(&mut self) -> Result<[u8; N]> {
         let data = self.data.as_ref();
         let total_len = self.offset + N;
         if total_len > data.len() {
-            return None;
+            return Err(InsufficientBytes);
         }
         unsafe {
             let mut tmp = MaybeUninit::<[u8; N]>::uninit();
@@ -107,7 +106,7 @@ impl<T: AsRef<[u8]>> View<T> {
                 N,
             );
             self.offset = total_len;
-            Some(tmp.assume_init())
+            Ok(tmp.assume_init())
         }
     }
 }
@@ -126,11 +125,11 @@ impl<T: AsMut<[u8]>> View<T> {
     /// assert_eq!(view.write(123_u32), Err(()));
     /// ```
     #[inline]
-    pub fn write<E: Endian>(&mut self, num: E) -> Result<(), ()> {
+    pub fn write<E: Endian>(&mut self, num: E) -> Result<()> {
         let data = self.data.as_mut();
         let total_len = self.offset + size_of::<E>();
         if total_len > data.len() {
-            return Err(());
+            return Err(InsufficientBytes);
         }
         unsafe { read_num(num, data.as_mut_ptr().add(self.offset)) };
         self.offset = total_len;
@@ -151,13 +150,13 @@ impl<T: AsMut<[u8]>> View<T> {
     /// assert_eq!(view.data, [4, 2, 0]);
     /// ```
     #[inline]
-    pub fn write_slice(&mut self, slice: impl AsRef<[u8]>) -> Result<(), ()> {
+    pub fn write_slice(&mut self, slice: impl AsRef<[u8]>) -> Result<()> {
         let src = slice.as_ref();
         let data = self.data.as_mut();
         let count = src.len();
         let total_len = self.offset + count;
         if total_len > data.len() {
-            return Err(());
+            return Err(InsufficientBytes);
         }
         unsafe {
             ptr::copy_nonoverlapping(src.as_ptr(), data.as_mut_ptr().add(self.offset), count);

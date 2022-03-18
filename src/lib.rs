@@ -7,6 +7,8 @@ mod types;
 mod view;
 
 use core::convert::TryInto;
+use core::mem::{size_of, MaybeUninit};
+use core::ptr;
 use ErrorKind::*;
 
 pub use derive::DataType;
@@ -36,7 +38,7 @@ pub enum ErrorKind {
 /// And For collection types, `Vec` and `String` are supported. They are encoded with their length `u32` value first, Following by each entry of the collection.
 pub trait DataType<'de>: Sized {
     /// Serialize the data to binary format.
-    fn serialize(self, view: &mut View<impl AsMut<[u8]>>);
+    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()>;
 
     /// Deserialize the data from binary format.
     fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self>;
@@ -59,8 +61,8 @@ pub trait DataType<'de>: Sized {
     /// assert_eq!(bytes, [1, 2, 3]);
     /// ```
     #[inline]
-    fn encode(self, data: &mut [u8]) {
-        self.serialize(&mut View::new(data));
+    fn encode(self, data: &mut [u8]) -> Result<()> {
+        self.serialize(&mut View::new(data))
     }
 
     /// Shortcut for `DataType::deserialize(&mut View::new(bytes.as_ref()))`

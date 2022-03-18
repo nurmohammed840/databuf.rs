@@ -1,12 +1,10 @@
 use super::*;
-use crate::view::{Endian, View};
 use core::{
     fmt,
     fmt::Debug,
     marker::PhantomData,
     ops::{Deref, DerefMut},
 };
-use ErrorKind::*;
 
 /// By default, `String`, &str, `Vec<T>` ect..  are encoded with their length value first,
 /// Default size of length value is 4 bytes (`u32`)
@@ -28,19 +26,9 @@ use ErrorKind::*;
 /// assert_eq!(writer.offset, 11);
 /// ```
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Record<L, T> {
+pub struct Record<Len, T> {
     pub data: T,
-    _marker: PhantomData<L>,
-}
-
-impl<Len, Type> Record<Len, Type> {
-    #[inline]
-    const fn new(data: Type) -> Self {
-        Self {
-            data,
-            _marker: PhantomData,
-        }
-    }
+    _marker: PhantomData<Len>,
 }
 
 // ---------------------------------------------------------------------------------
@@ -49,14 +37,13 @@ macro_rules! impls {
     [$($tys:tt),* => $deserialize:item] => {
         impl<'de, L> DataType<'de> for Record<L, $($tys)*>
         where
-            L: Endian + TryFrom<usize>,
-            L::Error: Debug,
+            L: DataType<'de> + TryFrom<usize>,
             usize: TryFrom<L>,
         {
             #[inline]
-            fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> {
-                let len: L = self.data.len().try_into().unwrap();
-                view.write(len)?; // length
+            fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
+                let len: L = self.data.len().try_into().map_err(|_| InvalidLength)?;
+                len.serialize(view)?;
                 view.write_slice(self.data)
             }
             #[inline]
@@ -65,12 +52,12 @@ macro_rules! impls {
     };
 }
 
-impls!(&, 'de, [u8] => fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> {
-    let len = read_len(view)?;
+impls!(&, 'de, [u8] => fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
+    let len: usize = L::deserialize(view)?.try_into().map_err(|_| InvalidLength)?;
     view.read_slice(len).map(|bytes| bytes.into())
 });
 
-impls!(String => fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> {
+impls!(String => fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
     let bytes: Record<L, &[u8]> = Record::deserialize(view)?;
 
     String::from_utf8(bytes.to_vec())
@@ -78,7 +65,7 @@ impls!(String => fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> {
         .map_err(|_| InvalidUtf8)
 });
 
-impls!(&, 'de, str => fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> {
+impls!(&, 'de, str => fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
     let bytes: Record<L, &[u8]> = Record::deserialize(view)?;
 
     core::str::from_utf8(bytes.data)
@@ -89,24 +76,24 @@ impls!(&, 'de, str => fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self>
 impl<'de, L, T> DataType<'de> for Record<L, Vec<T>>
 where
     T: DataType<'de>,
-    L: Endian + TryFrom<usize>,
-    L::Error: Debug,
+    L: DataType<'de> + TryFrom<usize>,
     usize: TryFrom<L>,
 {
     #[inline]
-    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> {
-        let len: L = self.data.len().try_into().unwrap();
-        view.write(len)?; // length
-
+    fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
+        let len: L = self.data.len().try_into().map_err(|_| InvalidLength)?;
+        len.serialize(view)?;
         for record in self.data {
             record.serialize(view)?;
         }
         Ok(())
     }
-
     #[inline]
-    fn deserialize(view: &mut View<&'de [u8]>) -> Result<Self> {
-        let len = read_len(view)?;
+    fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
+        let len: usize = L::deserialize(view)?
+            .try_into()
+            .map_err(|_| InvalidLength)?;
+
         (0..len)
             .map(|_| T::deserialize(view))
             .collect::<Result<Vec<_>>>()
@@ -114,24 +101,28 @@ where
     }
 }
 
-// ---------------------------------------------------------------------------------
-
+impl<L, T> Record<L, T> {
+    #[inline]
+    const fn new(data: T) -> Self {
+        Self {
+            data,
+            _marker: PhantomData,
+        }
+    }
+}
 impl<L, T: Debug> Debug for Record<L, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
         self.data.fmt(f)
     }
 }
-
 impl<L, T> From<T> for Record<L, T> {
     #[inline]
     fn from(data: T) -> Self {
         Self::new(data)
     }
 }
-
 impl<L, T> Deref for Record<L, T> {
     type Target = T;
-
     #[inline]
     fn deref(&self) -> &Self::Target {
         &self.data
@@ -142,15 +133,4 @@ impl<L, T> DerefMut for Record<L, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.data
     }
-}
-
-// ---------------------------------------------------------------------------------
-
-#[inline]
-fn read_len<L: Endian>(view: &mut View<&[u8]>) -> Result<usize>
-where
-    usize: TryFrom<L>,
-{
-    view.read::<L>()
-        .and_then(|num| num.try_into().map_err(|_| InvalidLength))
 }

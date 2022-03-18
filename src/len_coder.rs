@@ -39,7 +39,7 @@ macro_rules! def {
 def!(
     U15(u16),
     MAX: 0x7FFF,
-    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> {
+    fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
         let num = self.0;
         let b1 = num as u8;
         if num < 128 {
@@ -51,7 +51,7 @@ def!(
             view.write_slice([b1, b2])
         }
     },
-    fn deserialize(view: &mut View<&[u8]>) -> Result<Self> {
+    fn deserialize(view: &mut Cursor<&[u8]>) -> Result<Self> {
         let mut num = u8::deserialize(view)? as u16;
         // if LSB is set, read another byte.
         if num >> 7 == 1 {
@@ -67,7 +67,7 @@ def!(
 def!(
     U22(u32),
     MAX: 0x3FFFFF,
-    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> {
+    fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
         let num = self.0;
         let b1 = num as u8;
         if num < 128 {
@@ -86,7 +86,7 @@ def!(
             }
         }
     },
-    fn deserialize(view: &mut View<& [u8]>) -> Result<Self> {
+    fn deserialize(view: &mut Cursor<& [u8]>) -> Result<Self> {
         let mut num = u8::deserialize(view)? as u32;
         // if LSB is set, read another byte.
         if num >> 7 == 1 {
@@ -112,7 +112,7 @@ fn test_name() {
 def!(
     U29(u32),
     MAX: 0x1FFFFFFF,
-    fn serialize(self, view: &mut View<impl AsMut<[u8]>>) -> Result<()> {
+    fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
         let num = self.0;
         let b1 = num as u8;
         if num < 128 {
@@ -137,7 +137,7 @@ def!(
             }
         }
     },
-    fn deserialize(view: &mut View<& [u8]>) -> Result<Self> {
+    fn deserialize(view: &mut Cursor<& [u8]>) -> Result<Self> {
         let mut num = u8::deserialize(view)? as u32;
         // if LSB is set, read another byte.
         if num >> 7 == 1 {

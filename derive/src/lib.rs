@@ -36,14 +36,15 @@ fn derive_inner(input: TokenStream) -> Result<TokenStream> {
 
             gen.generate_fn("serialize")
                 .with_self_arg(FnSelfArg::TakeSelf)
-                .with_arg("view", "&mut bin_layout::View<impl AsMut<[u8]>>")
+                .with_arg("cursor", "&mut bin_layout::Cursor<impl AsMut<[u8]>>")
+                .with_return_type("bin_layout::Result<()>")
                 .body(|fn_body| {
-                    fn_body.push_parsed(ser)?;
+                    fn_body.push_parsed(format!("{} Ok(())", ser))?;
                     Ok(())
                 })?;
 
             gen.generate_fn("deserialize")
-                .with_arg("view", "&mut bin_layout::View<&'de [u8]>")
+                .with_arg("cursor", "&mut bin_layout::Cursor<&'de [u8]>")
                 .with_return_type("bin_layout::Result<Self>")
                 .body(|fn_body| {
                     fn_body.push_parsed(de)?;
@@ -55,7 +56,7 @@ fn derive_inner(input: TokenStream) -> Result<TokenStream> {
     generator.finish()
 }
 
-const FORMAT_DE: &str = "bin_layout::DataType::deserialize(view)?";
+const FORMAT_DE: &str = "bin_layout::DataType::deserialize(cursor)?";
 fn format_ser<T: std::fmt::Display>(ident: T) -> String {
-    format!("bin_layout::DataType::serialize(self.{}, view);", ident)
+    format!("bin_layout::DataType::serialize(self.{}, cursor)?;", ident)
 }

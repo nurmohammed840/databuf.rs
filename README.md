@@ -49,32 +49,50 @@ The only trait you need to implement is [DataType](https://docs.rs/bin-layout/la
 
 All [primitive types](https://doc.rust-lang.org/stable/rust-by-example/primitives.html) implement this trait.
 
-`Vec`, `String`, `&[T]`, `&str` etc.. are encoded with their length value (`U22`) first, Following by each entry.
+`Vec`, `String`, `&[T]`, `&str` etc.. are encoded with their length value first, Following by each entry. Length is encoded
 
+#### Variable-Length Integer Encoding
 
-#### Dynamic Length Size
+This encoding ensures that smaller integer values need fewer bytes to encode. Support types are `L2` and `L3`.
 
-Support types are `U15`, `U22` and `U29`.
-
-Default is `U22`. But you override it by setting `LF15`, `L29` or `U32` in features flag.
-  
-Those types are used to represent the length of a variable-length record.
+By default, `L2` (u15) is used to encode length (integer) for record. But you override it by setting `L3` (u22) in features flag.
  
-Encoding algorithm is very simple, If  LSB (least significant bit) is set, then
-read the next byte, last byte does not contain LSB.
+Encoding algorithm is very straightforward, reserving one or two most significant bits of the first byte to encode rest of the length.
+
+#### L2
+
+|  MSB  | Length | Usable Bits | Range    |
+| :---: | :----: | :---------: | :------- |
+|   0   |   1    |      7      | 0..127   |
+|   1   |   2    |     15      | 0..32767 |
+
+#### L3
+
+|  MSB  | Length | Usable Bits | Range      |
+| :---: | :----: | :---------: | :--------- |
+|   0   |   1    |      7      | 0..127     |
+|  10   |   2    |     14      | 0..16383   |
+|  11   |   3    |     22      | 0..4194303 |
+
  
 For example, Binary representation of `0x_C0DE` is `0x_11_0000001_1011110`
  
-`U22(0x_C0DE)` is encoded in 3 bytes:
+`L3(0x_C0DE)` is encoded in 3 bytes:
  
 ```yml
-1st byte: 1_1011110      # LSB is 1, so read next byte
-2nd byte: 1_0000001      # LSB is 1, continue reading
+1st byte: 11_011110      # MSB is 11, so read next 2 bytes
+2nd byte:        11
 3rd byte:        11
 ```
 
-#### Fixed Size
+Another example, `L3(107)` is encoded in just 1 byte:
 
-`Record` can be used to represent fixed-size records. 
+```yml
+1st byte: 0_1101011      # MSB is 0, So we don't have to read another bytes.
+```
 
-It accepts a generic type of length (`u8`, `u16` or `u32`) and a type of variable-length record type (`Vec<T>`, `String` etc..)
+#### Fixed-Length Integer Encoding
+
+`Record` can be used to represent fixed-size integer to represent the length of a record.
+
+It accepts fixed-length unsigned interger type of `N` (`u8`, `u32`, `usize`, etc..) and a generic type of `T` (`Vec<T>`, `String` etc..)

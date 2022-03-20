@@ -10,10 +10,17 @@ license = "Apache-2.0"
 keywords = ["binary", "encode", "decode", "serialize", "deserialize"]
 
 [features]
-no-overflow-checks = []
+
+
+# Enable nightly features to optimize serialization (`[N; T]`) for performance
 nightly = []
-BE = []
-NE = []
+
+# Endianness
+BE = []         # Big Endian
+NE = []         # Native Endian
+
+# Dynamic size types for length encoding of variable-length records.
+L3 = []         # 22 bits
 
 [dependencies]
 derive = { path = "./derive", version = "0.2" }

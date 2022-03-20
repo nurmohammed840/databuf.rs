@@ -1,3 +1,4 @@
+#![allow(unreachable_code)]
 use crate::*;
 
 impl DataType<'_> for bool {
@@ -27,9 +28,8 @@ macro_rules! impl_data_type_for {
             fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
                 unsafe {
                     let data = view.data.as_mut();
-                    let dst = data.as_mut_ptr().add(view.offset);
-                    
-                    check_len!(data, view, size_of::<Self>());
+                    let dst = data.as_mut_ptr().add(view.offset); 
+                    ret_err_or_add!(view.offset; + size_of::<Self>(); > data.len());
                     write_num!(self, dst);
                 }
             }
@@ -37,8 +37,8 @@ macro_rules! impl_data_type_for {
             fn deserialize(view: &mut Cursor<&[u8]>) -> Result<Self> {
                 unsafe {
                     let data = view.data.as_ref();
-                    let src = data.as_ptr().add(view.offset);
-                    check_len!(data, view, size_of::<Self>());
+                    let src = data.as_ptr().add(view.offset); 
+                    ret_err_or_add!(view.offset; + size_of::<Self>(); > data.len());
                     read_num!(src);
                 };
             }

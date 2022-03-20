@@ -8,7 +8,7 @@ mod types;
 
 use core::convert::TryInto;
 use core::mem::{size_of, MaybeUninit};
-use core::ptr;
+use core::{ptr, fmt};
 use ErrorKind::*;
 
 pub use cursor::*;
@@ -31,6 +31,13 @@ pub enum ErrorKind {
     InvalidUtf8,
     Other,
 }
+
+impl fmt::Display for ErrorKind {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        fmt::Debug::fmt(&self, f)
+    }
+}
+impl std::error::Error for ErrorKind {}
 
 /// A trait for serialize and deserialize data for binary format.
 ///

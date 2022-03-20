@@ -1,7 +1,5 @@
 use super::*;
 use core::{
-    fmt,
-    fmt::Debug,
     marker::PhantomData,
     ops::{Deref, DerefMut},
 };
@@ -113,8 +111,8 @@ impl<N: FixedLenInt, T> Record<N, T> {
         }
     }
 }
-impl<N: FixedLenInt, T: Debug> Debug for Record<N, T> {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> std::fmt::Result {
+impl<N: FixedLenInt, T: fmt::Debug> fmt::Debug for Record<N, T> {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.data.fmt(f)
     }
 }

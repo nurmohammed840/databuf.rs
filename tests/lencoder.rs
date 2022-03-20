@@ -10,7 +10,7 @@ fn test_lencoder_l2() {
 }
 #[test]
 fn test_lencoder_l3() {
-    for num in 0..(L3::MAX / 3) {
+    for num in 0..=(L3::MAX / 3) {
         let mut buf = [0; 3];
         L3(num).encode(&mut buf).unwrap();
         assert_eq!(num, L3::decode(&buf).unwrap().0);

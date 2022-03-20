@@ -47,11 +47,11 @@ macro_rules! def {
         impl $name { pub const MAX: $ty = $MAX; }
         impl DataType<'_> for $name { #[inline] $serialize #[inline] $deserialize }
         impl From<$ty> for $name { fn from(num: $ty) -> Self { Self(num) } }
-        impl std::ops::Deref for $name {
+        impl core::ops::Deref for $name {
             type Target = $ty;
             fn deref(&self) -> &Self::Target { &self.0 }
         }
-        impl std::ops::DerefMut for $name {
+        impl core::ops::DerefMut for $name {
             fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
         }
     };
@@ -65,6 +65,7 @@ def!(
         if num < 128 {
             b1.serialize(view) // No MSB is set, Bcs `num` is less then `128`
         } else {
+            debug_assert!(num <= Self::MAX);
             let b1 = 0x80 | b1; // 7 bits with MSB is set.
             let b2 = (num >> 7) as u8; // next 8 bits
             view.write_slice([b1, b2])
@@ -97,6 +98,7 @@ def!(
                 view.write_slice([0x80 | b1, b2])
             }
             else {
+                debug_assert!(num <= Self::MAX);
                 let b3 = (num >> 14) as u8; // next 8 bits
                 // set first 2 bits  of `b1` to `11`
                 view.write_slice([0xC0 | b1, b2, b3])

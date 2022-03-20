@@ -1,4 +1,3 @@
-#![allow(unreachable_code)]
 use crate::*;
 
 impl DataType<'_> for bool {
@@ -51,19 +50,25 @@ macro_rules! read_num {
         return Ok(Self::from_le_bytes(read_unaligned($src)));
         #[cfg(all(target_endian = "little", feature = "BE"))]
         return Ok(Self::from_be_bytes(read_unaligned($src)));
+        #[cfg(any(
+            feature = "NE",
+            all(target_endian = "big", feature = "BE"),
+            all(target_endian = "little", not(any(feature = "BE", feature = "NE"))),
+        ))]
         return Ok(read_unaligned($src));
     };
 }
 macro_rules! write_num {
     [$val:tt, $dst: expr] => (
-        #[cfg(all(target_endian = "big", not(any(feature = "BE", feature = "NE"))))]{
-            write_unaligned($val.to_le_bytes().as_ptr() , $dst, size_of::<Self>());
-            return Ok(());
-        }
-        #[cfg(all(target_endian = "little", feature = "BE"))]{
-            write_unaligned($val.to_be_bytes().as_ptr() , $dst, size_of::<Self>());
-            return Ok(());
-        }
+        #[cfg(all(target_endian = "big", not(any(feature = "BE", feature = "NE"))))]
+        write_unaligned($val.to_le_bytes().as_ptr() , $dst, size_of::<Self>());
+        #[cfg(all(target_endian = "little", feature = "BE"))]
+        write_unaligned($val.to_be_bytes().as_ptr() , $dst, size_of::<Self>());
+        #[cfg(any(
+            feature = "NE",
+            all(target_endian = "big", feature = "BE"),
+            all(target_endian = "little", not(any(feature = "BE", feature = "NE"))),
+        ))]
         write_unaligned(&$val as *const Self as *const u8, $dst, size_of::<Self>());
         return Ok(());
     )

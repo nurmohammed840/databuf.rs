@@ -23,7 +23,7 @@
 //! |  11   |   3    |     22      | 0..4194303 |
 //! 
 //!  
-//! For example, Binary representation of `0x_C0DE` is `0x_11_0000001_1011110`
+//! For example, Binary representation of `0x_C0DE` is `0x_11_00000011_011110`
 //!  
 //! `L3(0x_C0DE)` is encoded in 3 bytes:
 //!  

@@ -30,14 +30,14 @@ impl_data_type_for_typle!(
 );
 impl<'de, T: DataType<'de>, const N: usize> DataType<'de> for [T; N] {
     #[inline]
-    fn serialize(self, view: &mut cursor::Cursor<impl AsMut<[u8]>>) -> Result<()> {
+    fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
         for item in self {
             item.serialize(view)?;
         }
         Ok(())
     }
     #[inline]
-    fn deserialize(view: &mut cursor::Cursor<&'de [u8]>) -> Result<Self> {
+    fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
         #[cfg(feature = "nightly")]
         return [(); N].try_map(|_| T::deserialize(view));
         #[cfg(not(feature = "nightly"))]

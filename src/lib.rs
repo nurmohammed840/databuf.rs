@@ -36,7 +36,7 @@ pub enum ErrorKind {
 ///
 /// All [primitive types](https://doc.rust-lang.org/stable/rust-by-example/primitives.html) implement this trait.
 ///
-/// And For collection types, `Vec` and `String` are supported. They are encoded with their length `u32` value first, Following by each entry of the collection.
+/// `Vec`, `String`, `&[T]`, `&str` etc.. are encoded with their length value first, Following by each entry.
 pub trait DataType<'de>: Sized {
     /// Serialize the data to binary format.
     fn serialize(self, _: &mut Cursor<impl AsMut<[u8]>>) -> Result<()>;
@@ -91,7 +91,7 @@ pub trait DataType<'de>: Sized {
 // -----------------------------------------------------------------------
 
 macro_rules! ret_err_or_add {
-    [$offset:expr; + $count:expr; > $len:expr] => {
+    [($offset:expr; + $count:expr) > $len:expr] => {
         let total_len = $offset + $count;
         if total_len > $len { return Err(InsufficientBytes); }
         $offset = total_len;

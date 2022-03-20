@@ -49,7 +49,7 @@ The only trait you need to implement is [DataType](https://docs.rs/bin-layout/la
 
 All [primitive types](https://doc.rust-lang.org/stable/rust-by-example/primitives.html) implement this trait.
 
-`Vec`, `String`, `&[T]`, `&str` etc.. are encoded with their length value first, Following by each entry. Length is encoded
+`Vec`, `String`, `&[T]`, `&str` etc.. are encoded with their length value first, Following by each entry.
 
 #### Variable-Length Integer Encoding
 
@@ -75,7 +75,7 @@ Encoding algorithm is very straightforward, reserving one or two most significan
 |  11   |   3    |     22      | 0..4194303 |
 
  
-For example, Binary representation of `0x_C0DE` is `0x_11_0000001_1011110`
+For example, Binary representation of `0x_C0DE` is `0x_11_00000011_011110`
  
 `L3(0x_C0DE)` is encoded in 3 bytes:
  

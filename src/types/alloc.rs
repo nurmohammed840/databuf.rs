@@ -38,7 +38,7 @@ impls!(String => fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
 
 impl<'de, T: DataType<'de>> DataType<'de> for Vec<T> {
     #[inline]
-    fn serialize(self, view: &mut cursor::Cursor<impl AsMut<[u8]>>) -> Result<()> {
+    fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
         #[cfg(not(feature = "L3"))]
         lencoder::L2(self.len() as u16).serialize(view)?;
         #[cfg(feature = "L3")]
@@ -50,7 +50,7 @@ impl<'de, T: DataType<'de>> DataType<'de> for Vec<T> {
         Ok(())
     }
     #[inline]
-    fn deserialize(view: &mut cursor::Cursor<&'de [u8]>) -> Result<Self> {
+    fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
         #[cfg(not(feature = "L3"))]
         let len = lencoder::L2::deserialize(view)?.0;
         #[cfg(feature = "L3")]

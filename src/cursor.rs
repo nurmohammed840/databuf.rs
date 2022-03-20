@@ -7,6 +7,21 @@ pub struct Cursor<T> {
 }
 
 impl<T: AsMut<[u8]>> Cursor<T> {
+    /// Writes a slice into the data view.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use bin_layout::{Cursor, ErrorKind};
+    ///
+    /// let mut view = Cursor::new([0; 3]);
+    ///
+    /// assert_eq!(view.write_slice([4, 2]), Ok(()));
+    /// assert_eq!(view.write_slice([1, 2, 3]), Err(ErrorKind::InsufficientBytes));
+    /// 
+    /// assert_eq!(view.data, [4, 2, 0]);
+    /// assert_eq!(view.offset, 2);
+    /// ```
     #[inline]
     pub fn write_slice(&mut self, slice: impl AsRef<[u8]>) -> Result<()> {
         let data = self.data.as_mut();
@@ -14,13 +29,14 @@ impl<T: AsMut<[u8]>> Cursor<T> {
         let count = src.len();
         unsafe {
             let dst = data.as_mut_ptr().add(self.offset);
-            ret_err_or_add!(self.offset; + count; > data.len());            
+            ret_err_or_add!{ (self.offset; + count) > data.len() };            
             ptr::copy_nonoverlapping(src.as_ptr(), dst, count);
         }
         Ok(())
     }
 }
-impl<'a> Cursor<&'a [u8]> {
+
+impl<'de> Cursor<&'de [u8]> {
     /// Returns remaining slice from the current offset.
     /// It doesn't change the offset.
     ///
@@ -36,7 +52,7 @@ impl<'a> Cursor<&'a [u8]> {
     /// assert!(view.remaining_slice().is_empty());
     /// ```
     #[inline]
-    pub fn remaining_slice(&self) -> &'a [u8] {
+    pub fn remaining_slice(&self) -> &'de [u8] {
         unsafe { self.data.get_unchecked(self.offset.min(self.data.len())..) }
     }
 
@@ -51,7 +67,7 @@ impl<'a> Cursor<&'a [u8]> {
     /// assert!(view.read_slice(3).is_err());
     /// ```
     #[inline]
-    pub fn read_slice(&mut self, len: usize) -> Result<&'a [u8]> {
+    pub fn read_slice(&mut self, len: usize) -> Result<&'de [u8]> {
         let total_len = self.offset + len;
         let slice = self.data.get(self.offset..total_len).ok_or(InsufficientBytes)?;
         self.offset = total_len;

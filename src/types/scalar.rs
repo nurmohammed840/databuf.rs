@@ -59,15 +59,20 @@ macro_rules! read_num {
         return Ok(Self::from_le_bytes(read_unaligned!($src -> [u8; size_of::<Self>()])));
         #[cfg(all(target_endian = "little", feature = "BE"))]
         return Ok(Self::from_be_bytes(read_unaligned!($src -> [u8; size_of::<Self>()])));
+
         return Ok(read_unaligned!($src -> Self));
     };
 }
 macro_rules! write_num {
     [$val:tt, $dst: expr] => (
-        #[cfg(all(target_endian = "big", not(any(feature = "BE", feature = "NE"))))]
-        ptr::copy_nonoverlapping($val.to_le_bytes().as_ptr(), $dst, size_of::<Self>());
-        #[cfg(all(target_endian = "little", feature = "BE"))] 
-        ptr::copy_nonoverlapping($val.to_be_bytes().as_ptr(), $dst, size_of::<Self>());
+        #[cfg(all(target_endian = "big", not(any(feature = "BE", feature = "NE"))))]{
+            ptr::copy_nonoverlapping($val.to_le_bytes().as_ptr(), $dst, size_of::<Self>());
+            return Ok(());
+        }
+        #[cfg(all(target_endian = "little", feature = "BE"))]{
+            ptr::copy_nonoverlapping($val.to_be_bytes().as_ptr(), $dst, size_of::<Self>());
+            return Ok(());
+        }
         ptr::copy_nonoverlapping(&$val as *const Self as *const u8, $dst, size_of::<Self>());
         return Ok(());
     )

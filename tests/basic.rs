@@ -67,8 +67,8 @@ fn basic() {
     assert_eq!(writer.offset, 40); // 40 bytes written
 
     let mut reader = Cursor::new(buf.as_ref());
-    let new_class: Class = DataType::deserialize(&mut reader).unwrap();
+    let new_class = Class::deserialize(&mut reader).unwrap();
     assert_eq!(reader.offset, 40); // 40 bytes read
-
+    
     assert_eq!(old_class, new_class);
 }

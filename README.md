@@ -53,7 +53,7 @@ All [primitive types](https://doc.rust-lang.org/stable/rust-by-example/primitive
 
 #### Variable-Length Integer Encoding
 
-This encoding ensures that smaller integer values need fewer bytes to encode. Support types are `L2` and `L3`.
+This encoding ensures that smaller integer values need fewer bytes to encode. Support types are `L2` and `L3`, both are encoded in little endian.
 
 By default, `L2` (u15) is used to encode length (integer) for record. But you override it by setting `L3` (u22) in features flag.
  
@@ -88,11 +88,11 @@ For example, Binary representation of `0x_C0DE` is `0x_11_0000001_1011110`
 Another example, `L3(107)` is encoded in just 1 byte:
 
 ```yml
-1st byte: 0_1101011      # MSB is 0, So we don't have to read another bytes.
+1st byte: 0_1101011      # MSB is 0, So we don't have to read extra bytes.
 ```
 
 #### Fixed-Length Integer Encoding
 
-`Record` can be used to represent fixed-size integer to represent the length of a record.
+[Record](https://docs.rs/bin-layout/latest/bin_layout/struct.Record.html) can be used to represent fixed-size integer to represent the length of a record.
 
 It accepts fixed-length unsigned interger type of `N` (`u8`, `u32`, `usize`, etc..) and a generic type of `T` (`Vec<T>`, `String` etc..)

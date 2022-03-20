@@ -97,4 +97,4 @@ macro_rules! ret_err_or_add {
         $offset = total_len;
     };
 }
-use ret_err_or_add;
+pub(crate) use ret_err_or_add;

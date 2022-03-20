@@ -1,6 +1,6 @@
 [package]
 name = "bin-layout"
-version = "2.0.0"
+version = "2.0.1"
 edition = "2021"
 
 description = "This library used to serialize and deserialize data in binary format."

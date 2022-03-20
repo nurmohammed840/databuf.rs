@@ -11,8 +11,8 @@ use core::mem::{size_of, MaybeUninit};
 use core::ptr;
 use ErrorKind::*;
 
-pub use cursor::Cursor;
-pub use derive::DataType;
+pub use cursor::*;
+pub use derive::*;
 pub use record::*;
 
 /// Shortcut for `Result<T, bin_layout::ErrorKind>`

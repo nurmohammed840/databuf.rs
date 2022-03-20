@@ -23,4 +23,4 @@ NE = []         # Native Endian
 L3 = []         # 22 bits
 
 [dependencies]
-derive = { path = "./derive", version = "0.3" }
+derive = { path = "./derive", version = "1" }

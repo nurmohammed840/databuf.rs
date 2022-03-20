@@ -19,8 +19,8 @@ nightly = []
 BE = []         # Big Endian
 NE = []         # Native Endian
 
-# Dynamic size types for length encoding of variable-length records.
+# Variable-Length integer encoding types
 L3 = []         # 22 bits
 
 [dependencies]
-derive = { path = "./derive", version = "0.2" }
+derive = { path = "./derive", version = "0.3" }

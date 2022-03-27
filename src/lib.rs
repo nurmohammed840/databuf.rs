@@ -47,14 +47,19 @@ impl std::error::Error for ErrorKind {}
 ///
 /// `Vec`, `String`, `&[T]`, `&str` etc.. are encoded with their length value first, Following by each entry.
 pub trait DataType<'de>: Sized {
+    const SIZE: usize = size_of::<Self>();
+
+    #[inline]
+    fn size_hint(&self) -> usize {
+        Self::SIZE
+    }
+
     /// Serialize the data to binary format.
-    fn serialize(self, _: &mut Cursor<impl AsMut<[u8]>>) -> Result<()>;
+    fn serialize(self, _: &mut Cursor<impl Bytes>);
 
     /// Deserialize the data from binary format.
     fn deserialize(_: &mut Cursor<&'de [u8]>) -> Result<Self>;
 
-    /// Shortcut for `DataType::serialize(self, &mut View::new(bytes.as_mut()))`
-    ///
     /// ### Example
     ///
     /// ```
@@ -71,8 +76,11 @@ pub trait DataType<'de>: Sized {
     /// assert_eq!(bytes, [1, 2, 3]);
     /// ```
     #[inline]
-    fn encode(self, data: &mut [u8]) -> Result<()> {
-        self.serialize(&mut Cursor::from(data))
+    fn encode(self) -> Vec<u8> {
+        let mut vec = Vec::with_capacity(self.size_hint());
+        let mut cursor: Cursor<&mut Vec<u8>> = (&mut vec).into();
+        self.serialize(&mut cursor);
+        vec
     }
 
     /// Shortcut for `DataType::deserialize(&mut View::new(bytes.as_ref()))`
@@ -96,14 +104,3 @@ pub trait DataType<'de>: Sized {
         Self::deserialize(&mut Cursor::from(data))
     }
 }
-
-// -----------------------------------------------------------------------
-
-macro_rules! ret_err_or_add {
-    [($offset:expr; + $count:expr) > $len:expr] => {
-        let total_len = $offset + $count;
-        if total_len > $len { return Err(InsufficientBytes); }
-        $offset = total_len;
-    };
-}
-pub(crate) use ret_err_or_add;

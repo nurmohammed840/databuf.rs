@@ -2,8 +2,8 @@ use crate::*;
 
 impl DataType<'_> for bool {
     #[inline]
-    fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
-        u8::serialize(self.into(), view)
+    fn serialize(self, view: &mut Cursor<impl Bytes>) {
+        u8::serialize(self.into(), view);
     }
     #[inline]
     fn deserialize(view: &mut Cursor<&[u8]>) -> Result<Self> {
@@ -12,8 +12,8 @@ impl DataType<'_> for bool {
 }
 impl DataType<'_> for char {
     #[inline]
-    fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
-        u32::serialize(self.into(), view)
+    fn serialize(self, view: &mut Cursor<impl Bytes>) {
+        u32::serialize(self.into(), view);
     }
     #[inline]
     fn deserialize(view: &mut Cursor<&[u8]>) -> Result<Self> {
@@ -24,20 +24,26 @@ macro_rules! impl_data_type_for {
     [$($rty:ty)*] => ($(
         impl DataType<'_> for $rty {
             #[inline]
-            fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
+            fn serialize(self, view: &mut Cursor<impl Bytes>) {
                 unsafe {
                     let data = view.data.as_mut();
                     let dst = data.as_mut_ptr().add(view.offset);
-                    ret_err_or_add! { (view.offset; + size_of::<Self>()) > data.len() };
+
+                    let total_len = view.offset + size_of::<Self>();
+                    view.data.extend_len(total_len, size_of::<Self>());
+
+                    view.offset = total_len;
                     write_num!(self, dst);
                 }
             }
             #[inline]
             fn deserialize(view: &mut Cursor<&[u8]>) -> Result<Self> {
                 unsafe {
-                    let data = view.data.as_ref();
-                    let src = data.as_ptr().add(view.offset);
-                    ret_err_or_add!{ (view.offset; + size_of::<Self>()) > data.len() };
+                    let total_len = view.offset + size_of::<Self>();
+                    if total_len > view.data.len() { return Err(InsufficientBytes); }
+                    
+                    let src = view.data.as_ptr().add(view.offset);
+                    view.offset = total_len;
                     read_num!(src);
                 };
             }
@@ -70,9 +76,9 @@ macro_rules! write_num {
             all(target_endian = "little", not(any(feature = "BE", feature = "NE"))),
         ))]
         write_unaligned(&$val as *const Self as *const u8, $dst, size_of::<Self>());
-        return Ok(());
     )
 }
+
 impl_data_type_for!(
     u8 u16 u32 u64 u128
     i8 i16 i32 i64 i128

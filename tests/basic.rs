@@ -1,4 +1,4 @@
-use bin_layout::{DataType, Cursor, ErrorKind, Record};
+use bin_layout::{DataType, Cursor, ErrorKind, Record, Bytes};
 
 use Subject::*;
 #[derive(PartialEq, Debug, Clone)]
@@ -10,13 +10,13 @@ enum Subject<'a> {
 }
 
 impl<'de> DataType<'de> for Subject<'de> {
-    fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<(), ErrorKind> {
+    fn serialize(self, view: &mut Cursor<impl Bytes>) {
         let code: u16 = match self {
             Math => 302,
             Physics => 317,
             Chemistry => 345,
             Other(id, name) => {
-                id.serialize(view)?;
+                id.serialize(view);
                 return Record::serialize(name, view);
             }
         };
@@ -58,12 +58,11 @@ fn basic() {
             Student { age: 20, name: "Jui", gender: false, roll: 36 },
         ]
         .into(),
-    };
-
+    };    
     let mut buf = [0; 50];
 
     let mut writer = Cursor::new(buf.as_mut());
-    old_class.clone().serialize(&mut writer).unwrap();
+    old_class.clone().serialize(&mut writer);
     assert_eq!(writer.offset, 40); // 40 bytes written
 
     let mut reader = Cursor::new(buf.as_ref());

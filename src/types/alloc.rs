@@ -4,19 +4,23 @@ macro_rules! impls {
     [$($tys:tt),* => $deserialize:item] => {
         impl<'de> DataType<'de> for $($tys)* {
             #[inline]
-            fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
-                #[cfg(not(feature = "L3"))]
-                lencoder::L2(self.len() as u16).serialize(view)?;
-                #[cfg(feature = "L3")]
-                lencoder::L3(self.len() as u32).serialize(view)?;
+            fn size_hint(&self) -> usize { self.len() + 4 } // 4 bytes for length (L2 or L3 + 1 extra for no reason)
 
-                view.write_slice(self)
+            #[inline]
+            fn serialize(self, view: &mut Cursor<impl Bytes>) {
+                #[cfg(not(feature = "L3"))]
+                lencoder::L2(self.len() as u16).serialize(view);
+                #[cfg(feature = "L3")]
+                lencoder::L3(self.len() as u32).serialize(view);
+
+                view.write_slice(self);
             }
             #[inline]
             $deserialize
         }
     };
 }
+
 impls!(&, 'de, [u8] => fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
     #[cfg(not(feature = "L3"))]
     let len = lencoder::L2::deserialize(view)?.0;
@@ -38,16 +42,15 @@ impls!(String => fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
 
 impl<'de, T: DataType<'de>> DataType<'de> for Vec<T> {
     #[inline]
-    fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
+    fn serialize(self, view: &mut Cursor<impl Bytes>) {
         #[cfg(not(feature = "L3"))]
-        lencoder::L2(self.len() as u16).serialize(view)?;
+        lencoder::L2(self.len() as u16).serialize(view);
         #[cfg(feature = "L3")]
-        lencoder::L3(self.len() as u32).serialize(view)?;
+        lencoder::L3(self.len() as u32).serialize(view);
 
         for item in self {
-            item.serialize(view)?;
+            item.serialize(view);
         }
-        Ok(())
     }
     #[inline]
     fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
@@ -61,5 +64,11 @@ impl<'de, T: DataType<'de>> DataType<'de> for Vec<T> {
             vec.push(T::deserialize(view)?);
         }
         Ok(vec)
+    }
+
+    #[inline]
+    fn size_hint(&self) -> usize {
+        // 4 bytes for length (L2 or L3 + 1 extra for no reason) 
+        4 + self.iter().map(T::size_hint).sum::<usize>() 
     }
 }

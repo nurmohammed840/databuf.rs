@@ -45,7 +45,10 @@ macro_rules! def {
         #[derive(Default, Debug, Clone, Copy)]
         pub struct $name(pub $ty);
         impl $name { pub const MAX: $ty = $MAX; }
-        impl DataType<'_> for $name { #[inline] $serialize #[inline] $deserialize }
+        impl DataType<'_> for $name {
+            #[inline] $serialize 
+            #[inline] $deserialize 
+        }
         impl From<$ty> for $name { fn from(num: $ty) -> Self { Self(num) } }
         impl core::ops::Deref for $name {
             type Target = $ty;
@@ -59,16 +62,16 @@ macro_rules! def {
 def!(
     L2(u16),
     MAX: 0x7FFF,
-    fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
+    fn serialize(self, view: &mut Cursor<impl Bytes>) {
         let num = self.0;
         let b1 = num as u8;
         if num < 128 {
-            b1.serialize(view) // No MSB is set, Bcs `num` is less then `128`
+            b1.serialize(view); // No MSB is set, Bcs `num` is less then `128`
         } else {
             debug_assert!(num <= Self::MAX);
             let b1 = 0x80 | b1; // 7 bits with MSB is set.
             let b2 = (num >> 7) as u8; // next 8 bits
-            view.write_slice([b1, b2])
+            view.write_slice([b1, b2]);
         }
     },
     fn deserialize(view: &mut Cursor<&[u8]>) -> Result<Self> {
@@ -84,24 +87,24 @@ def!(
 def!(
     L3(u32),
     MAX: 0x3FFFFF,
-    fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
+    fn serialize(self, view: &mut Cursor<impl Bytes>) {
         let num = self.0;
         let b1 = num as u8;
         if num < 128 {
-            b1.serialize(view)
+            b1.serialize(view);
         }
         else { 
             let b1 = b1 & 0x3F; // read last 6 bits
             let b2 = (num >> 6) as u8; // next 8 bits
             if num < 0x4000 {
                 // set first 2 bits  of `b1` to `10`
-                view.write_slice([0x80 | b1, b2])
+                view.write_slice([0x80 | b1, b2]);
             }
             else {
                 debug_assert!(num <= Self::MAX);
                 let b3 = (num >> 14) as u8; // next 8 bits
                 // set first 2 bits  of `b1` to `11`
-                view.write_slice([0xC0 | b1, b2, b3])
+                view.write_slice([0xC0 | b1, b2, b3]);
             }
         }
     },

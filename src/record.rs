@@ -12,7 +12,7 @@ impl FixedLenInt for u64 {}
 impl FixedLenInt for usize {}
 
 /// `Record` can be used to represent fixed-size integer to represent the length of a record.
-/// 
+///
 /// It accepts fixed-length unsigned interger type of `N` (`u8`, `u32`, `usize`, etc..) and a generic type of `T` (`Vec<T>`, `String` etc..)
 /// ### Example
 ///
@@ -29,25 +29,28 @@ impl FixedLenInt for usize {}
 /// assert_eq!(writer.offset, 11);
 /// ```
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Record<N: FixedLenInt, T> {
+pub struct Record<Len: FixedLenInt, T> {
     pub data: T,
-    _marker: PhantomData<N>,
+    _marker: PhantomData<Len>,
 }
 
 // ---------------------------------------------------------------------------------
 
 macro_rules! impls {
     [$($tys:tt),* => $deserialize:item] => {
-        impl<'de, N> DataType<'de> for Record<N, $($tys)*>
+        impl<'de, Len> DataType<'de> for Record<Len, $($tys)*>
         where
-            N: DataType<'de> + FixedLenInt,
-            usize: TryFrom<N>,
+            Len: DataType<'de> + FixedLenInt,
+            usize: TryFrom<Len>,
         {
             #[inline]
-            fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
-                let len: N = self.data.len().try_into().map_err(|_| InvalidLength)?;
-                len.serialize(view)?;
-                view.write_slice(self.data)
+            fn size_hint(&self) -> usize { self.len() + 8 } // assume: 8 bytes for length
+
+            #[inline]
+            fn serialize(self, view: &mut Cursor<impl Bytes>) {
+                let len: Len = unsafe { self.data.len().try_into().unwrap_unchecked() };
+                len.serialize(view);
+                view.write_slice(self.data);
             }
             #[inline]
             $deserialize
@@ -55,42 +58,41 @@ macro_rules! impls {
     };
 }
 impls!(&, 'de, [u8] => fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
-    let len: usize = N::deserialize(view)?.try_into().map_err(|_| InvalidLength)?;
+    let len: usize = Len::deserialize(view)?.try_into().map_err(|_| InvalidLength)?;
     view.read_slice(len).map(|bytes| bytes.into())
 });
 impls!(String => fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
-    let bytes: Record<N, &'de [u8]> = Record::deserialize(view)?;
+    let bytes: Record<Len, &'de [u8]> = Record::deserialize(view)?;
 
     String::from_utf8(bytes.to_vec())
         .map(|string| string.into())
         .map_err(|_| InvalidUtf8)
 });
 impls!(&, 'de, str => fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
-    let bytes: Record<N, &'de [u8]> = Record::deserialize(view)?;
+    let bytes: Record<Len, &'de [u8]> = Record::deserialize(view)?;
 
     core::str::from_utf8(bytes.data)
         .map(|string| string.into())
         .map_err(|_| InvalidUtf8)
 });
 
-impl<'de, N, T> DataType<'de> for Record<N, Vec<T>>
+impl<'de, Len, T> DataType<'de> for Record<Len, Vec<T>>
 where
     T: DataType<'de>,
-    N: DataType<'de> + FixedLenInt,
-    usize: TryFrom<N>,
+    Len: DataType<'de> + FixedLenInt,
+    usize: TryFrom<Len>,
 {
     #[inline]
-    fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
-        let len: N = self.data.len().try_into().map_err(|_| InvalidLength)?;
-        len.serialize(view)?;
+    fn serialize(self, view: &mut Cursor<impl Bytes>) {
+        let len: Len = unsafe { self.data.len().try_into().unwrap_unchecked() };
+        len.serialize(view);
         for record in self.data {
-            record.serialize(view)?;
+            record.serialize(view);
         }
-        Ok(())
     }
     #[inline]
     fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
-        let len: usize = N::deserialize(view)?
+        let len: usize = Len::deserialize(view)?
             .try_into()
             .map_err(|_| InvalidLength)?;
 
@@ -100,11 +102,17 @@ where
         }
         Ok(vec.into())
     }
+
+    #[inline]
+    fn size_hint(&self) -> usize {
+        // assume: 8 bytes for length
+        8 + self.iter().map(T::size_hint).sum::<usize>() 
+    }
 }
 
 impl<N: FixedLenInt, T> Record<N, T> {
     #[inline]
-    pub  fn new(data: T) -> Self {
+    pub fn new(data: T) -> Self {
         Self {
             data,
             _marker: PhantomData,

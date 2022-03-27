@@ -8,13 +8,21 @@ macro_rules! impl_data_type_for_typle {
             where
                 $($name: DataType<'de>,)*
             {
+                const SIZE: usize = $($name::SIZE+)* 0;
+
                 #[inline]
-                fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> { 
-                    $(self.$idx.serialize(view)?;)*
-                    Ok(())
+                fn serialize(self, view: &mut Cursor<impl Bytes>) { 
+                    $(self.$idx.serialize(view);)*
                 }
                 #[inline]
-                fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> { Ok(($($name::deserialize(view)?),*)) }
+                fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> { 
+                    Ok(($($name::deserialize(view)?),*)) 
+                }
+
+                #[inline]
+                fn size_hint(&self) -> usize {
+                    $(self.$idx.size_hint()+)* 0 
+                }
             }
         )*
     );
@@ -29,12 +37,13 @@ impl_data_type_for_typle!(
     (A:0, B:1, C:2, D:3, E:4, F:5, G:6)
 );
 impl<'de, T: DataType<'de>, const N: usize> DataType<'de> for [T; N] {
+    const SIZE: usize = N * T::SIZE;
+
     #[inline]
-    fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
+    fn serialize(self, view: &mut Cursor<impl Bytes>) {
         for item in self {
-            item.serialize(view)?;
+            item.serialize(view);
         }
-        Ok(())
     }
     #[inline]
     fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
@@ -46,11 +55,18 @@ impl<'de, T: DataType<'de>, const N: usize> DataType<'de> for [T; N] {
             .collect::<Result<Vec<_>>>()
             .map(|v| unsafe { v.try_into().unwrap_unchecked() });
     }
+
+    #[inline]
+    fn size_hint(&self) -> usize {
+        self.iter().map(T::size_hint).sum() 
+    }
 }
 impl<'de, const N: usize> DataType<'de> for &'de [u8; N] {
+    const SIZE: usize = N;
+    
     #[inline]
-    fn serialize(self, view: &mut Cursor<impl AsMut<[u8]>>) -> Result<()> {
-        view.write_slice(self)
+    fn serialize(self, view: &mut Cursor<impl Bytes>) {
+        view.write_slice(self);
     }
     #[inline]
     fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {

@@ -1,6 +1,7 @@
 #![cfg_attr(feature = "nightly", feature(array_try_map))]
 #![doc = include_str!("../README.md")]
 
+mod bytes;
 mod cursor;
 pub mod lencoder;
 mod record;
@@ -8,9 +9,10 @@ mod types;
 
 use core::convert::TryInto;
 use core::mem::{size_of, MaybeUninit};
-use core::{ptr, fmt};
+use core::{fmt, ptr};
 use ErrorKind::*;
 
+pub use bytes::*;
 pub use cursor::*;
 pub use derive::*;
 pub use record::*;

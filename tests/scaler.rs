@@ -20,3 +20,28 @@ fn test_scaler_type_serialization() {
         assert_eq!(word, u64::decode(word.encode().as_ref()).unwrap());
     });
 }
+
+mod adw {
+    use bin_layout::{Bytes, Cursor, DataType, ErrorKind};
+    // Some fixed len data structures
+
+    #[derive(DataType)]
+    struct Bar(u16);
+
+    struct Foo {
+        x: u8,
+        y: Bar,
+    }
+    impl DataType<'_> for Foo {
+        fn serialize(self, c: &mut Cursor<impl Bytes>) {
+            self.x.serialize(c);
+            self.y.serialize(c);
+        }
+        fn deserialize(c: &mut Cursor<&[u8]>) -> Result<Self, ErrorKind> {
+            Ok(Self {
+                x: u8::deserialize(c)?,
+                y: Bar::deserialize(c)?,
+            })
+        }
+    }
+}

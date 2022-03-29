@@ -41,6 +41,114 @@ let bytes = old.encode();
 let new = Company::decode(&bytes).unwrap();
 ```
 
+
+
+There is two main reasons for this library to exists. 
+
+### 1. 🚀 Performance 🚀  
+
+There is no performance penalty for using this library. Or we can say there is zero-cost.
+
+- Zero-copy deserialization:
+    Its mean that no data is copied. Instead, the data is referenced.
+    Which is only possible (safely) in rust, Other languages have to use unsafe operations.
+    
+    ```rust
+    #[derive(DataType)]
+    struct Msg<'a> {
+        id: u8,
+        data: &'a str,
+    }
+    let bytes = [42, 13, 72, 101, 108, 108, 111, 44, 32, 87, 111, 114, 108, 100, 33];
+    //           ^^  ^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+    //           Id  Len                         Data
+
+    let msg = Msg::decode(&bytes).unwrap();
+
+    // drop(msg); // Uncomment this line, If you want to see error at complie time!
+
+    assert_eq!(msg.id, 42);
+    assert_eq!(msg.data, "Hello, World!"); // Here, data is referenced.
+    ```
+
+- Compile time allocation:
+
+    What if the data is fixed size? Then we don't need to allocate any memory at runtime.
+    We could allocate a fixed size buffer at compile time!
+
+    For example, The following structs, don't have any dynamic data. So we can have a fixed size buffer at compile time.
+
+    ```rust
+    #[derive(DataType)]
+    struct Date {
+        year: u16,
+        month: u8,
+        day: u8,
+    }
+
+    #[derive(DataType)]
+    struct Record {
+        id: u32,
+        date: Date,
+        value: [u8; 512],
+    }
+
+    let buf = [0; Record::SIZE]; // 520 bytes buffer.
+    let record = Record { /* ... */ }.serialize(&mut buf.as_mut().into());
+    ```
+
+    What happens if we have a dynamic data (like vector, string, etc...) ? Then we have to allocate memory at runtime.
+    
+    But how much memory we need to store the whole data ? When a vector is full, It creates a new vector with larger size, Then move all data to the new vector. Which is expensive.
+
+    Well everydata type has a method called `size_hint`, which calculates the total size of the data at runtime. Which is cheap to compute.
+
+    For example:
+
+    ```rust
+    #[derive(DataType)]
+    struct Student {
+        age: u8,
+        roll: u32,
+        name: String, // Here we have a dynamic data.
+    }
+
+    if Student::IS_DYNAMIC {
+        let bytes = Student { /* ... */ }.encode();
+    }
+    // else, we have a fixed size buffer.
+    else { /* ... */  } 
+    ```
+    Here more nice things is that, `IS_DYNAMIC` is a compile time constant. So compiler can optimize this code. Meaning, this is no logical `if/else` condition in executable binary!
+    Thus, Zero-cost!
+
+### 2. Flexibility
+
+    It work by mantaining a cursor. Which is a pointer to the current position in the buffer.
+    And the cursor is updated when reading or writing data to the buffer.
+
+    It's very easy to implement a custom serializer/deserializer for your own data type.
+    For example:
+
+    ```rust
+    #[derive(DataType)]
+    struct Bar(u16);
+    struct Foo { x: u8, y: Bar }
+
+    impl DataType<'_> for Foo {
+        fn serialize(self, c: &mut Cursor<impl Bytes>) {
+            self.x.serialize(c);
+            self.y.serialize(c);
+        }
+        fn deserialize(c: &mut Cursor<&[u8]>) -> Result<Self, ErrorKind> {
+            Ok(Self {
+                x: u8::deserialize(c)?,
+                y: Bar::deserialize(c)?,
+            })
+        }
+    }
+    ```
+
 ### Data Type
 
 The only trait you need to implement is [DataType](https://docs.rs/bin-layout/latest/bin_layout/trait.DataType.html).

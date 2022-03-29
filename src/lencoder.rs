@@ -78,7 +78,7 @@ def!(
         if num < 128 {
             b1.serialize(view); // No MSB is set, Bcs `num` is less then `128`
         } else {
-            assert!(num <= Self::MAX);
+            debug_assert!(num <= Self::MAX);
             let b1 = 0x80 | b1; // 7 bits with MSB is set.
             let b2 = (num >> 7) as u8; // next 8 bits
             view.write_slice([b1, b2]);
@@ -112,7 +112,7 @@ def!(
                 view.write_slice([0x80 | b1, b2]);
             }
             else {
-                assert!(num <= Self::MAX);
+                debug_assert!(num <= Self::MAX);
                 let b3 = (num >> 14) as u8; // next 8 bits
                 // set first 2 bits  of `b1` to `11`
                 view.write_slice([0xC0 | b1, b2, b3]);

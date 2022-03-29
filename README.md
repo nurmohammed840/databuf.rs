@@ -122,32 +122,33 @@ There is no performance penalty for using this library. Or we can say there is z
     Here more nice things is that, `IS_DYNAMIC` is a compile time constant. So compiler can optimize this code. Meaning, this is no logical `if/else` condition in executable binary!
     Thus, Zero-cost!
 
-### 2. Flexibility
+###  Flexibility
 
-    It work by mantaining a cursor. Which is a pointer to the current position in the buffer.
-    And the cursor is updated when reading or writing data to the buffer.
+It work by mantaining a [cursor](https://docs.rs/bin-layout/latest/bin_layout/struct.Cursor.html). Which is a pointer to the current position in the buffer.
+And the cursor is updated when reading or writing data to the buffer.
 
-    It's very easy to implement a custom serializer/deserializer for your own data type.
-    For example:
+It's very easy to implement a custom serializer/deserializer for your own data type.
 
-    ```rust
-    #[derive(DataType)]
-    struct Bar(u16);
-    struct Foo { x: u8, y: Bar }
+For example:
 
-    impl DataType<'_> for Foo {
-        fn serialize(self, c: &mut Cursor<impl Bytes>) {
-            self.x.serialize(c);
-            self.y.serialize(c);
-        }
-        fn deserialize(c: &mut Cursor<&[u8]>) -> Result<Self, ErrorKind> {
-            Ok(Self {
-                x: u8::deserialize(c)?,
-                y: Bar::deserialize(c)?,
-            })
-        }
+```rust
+#[derive(DataType)]
+struct Bar(u16);
+struct Foo { x: u8, y: Bar }
+
+impl DataType<'_> for Foo {
+    fn serialize(self, c: &mut Cursor<impl Bytes>) {
+        self.x.serialize(c);
+        self.y.serialize(c);
     }
-    ```
+    fn deserialize(c: &mut Cursor<&[u8]>) -> Result<Self, ErrorKind> {
+        Ok(Self {
+            x: u8::deserialize(c)?,
+            y: Bar::deserialize(c)?,
+        })
+    }
+}
+```
 
 ### Data Type
 

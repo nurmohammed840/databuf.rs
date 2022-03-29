@@ -1,6 +1,6 @@
 use bin_layout::{DataType, Cursor, ErrorKind, Record, Bytes};
-
 use Subject::*;
+
 #[derive(PartialEq, Debug, Clone)]
 enum Subject<'a> {
     Math,
@@ -10,6 +10,12 @@ enum Subject<'a> {
 }
 
 impl<'de> DataType<'de> for Subject<'de> {
+    fn size_hint(&self) -> usize {
+        match self {
+            Other(a, r) =>  a.size_hint() + r.size_hint(),
+            _ => 2,
+        }
+    }
     fn serialize(self, view: &mut Cursor<impl Bytes>) {
         let code: u16 = match self {
             Math => 302,
@@ -22,6 +28,7 @@ impl<'de> DataType<'de> for Subject<'de> {
         };
         code.serialize(view)
     }
+
     fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self, ErrorKind> {
         let name = match u16::deserialize(view)? {
             302 => Math,
@@ -40,8 +47,7 @@ struct Student<'a> {
     gender: bool,
     roll: u8,
 }
-
-#[derive(DataType, PartialEq, Debug, Clone)]
+#[derive(DataType, Debug, PartialEq, Clone)]
 struct Class<'a> {
     name: &'a str,
     subjects: [Subject<'a>; 4],
@@ -59,15 +65,14 @@ fn basic() {
         ]
         .into(),
     };
-    let mut buf = [0; 50];
 
-    let mut writer = Cursor::new(buf.as_mut());
-    old_class.clone().serialize(&mut writer);
-    assert_eq!(writer.offset, 40); // 40 bytes written
-
-    let mut reader = Cursor::new(buf.as_ref());
-    let new_class = Class::deserialize(&mut reader).unwrap();
-    assert_eq!(reader.offset, 40); // 40 bytes read
+    // Note: Size hint for `&str` is `Lencoder::SIZE + bytes.len()`
+    // "Mango" has 5 chars + Lencoder::SIZE (L2) = 7
+    assert_eq!(old_class.size_hint(), 43);
     
+    let bytes = old_class.clone().encode();
+    assert_eq!(bytes.len(), 40);
+
+    let new_class = Class::decode(&bytes).unwrap();
     assert_eq!(old_class, new_class);
 }

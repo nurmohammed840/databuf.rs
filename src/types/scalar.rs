@@ -36,7 +36,7 @@ macro_rules! impl_data_type_for {
                     let dst = data.as_mut_ptr().add(view.offset);
 
                     let total_len = view.offset + size_of::<Self>();
-                    view.data.extend_len(total_len, size_of::<Self>());
+                    view.data.new_len(total_len, size_of::<Self>());
 
                     view.offset = total_len;
                     write_num!(self, dst);

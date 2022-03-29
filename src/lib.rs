@@ -15,8 +15,8 @@ use ErrorKind::*;
 pub use bytes::*;
 pub use cursor::*;
 pub use derive::*;
-pub use record::*;
 pub use lencoder::Lencoder;
+pub use record::*;
 
 /// Shortcut for `Result<T, bin_layout::ErrorKind>`
 pub type Result<T> = core::result::Result<T, ErrorKind>;
@@ -78,10 +78,8 @@ pub trait DataType<'de>: Sized {
     ///     foo: u8,
     ///     bar: [u8; 2],
     /// }
-    ///
-    /// let mut bytes = [0; 3];
-    /// FooBar { foo: 1, bar: [2, 3] }.encode(&mut bytes);
-    /// assert_eq!(bytes, [1, 2, 3]);
+    /// let foobar = FooBar { foo: 1, bar: [2, 3] }.encode();
+    /// assert_eq!(vec![1, 2, 3], foobar);
     /// ```
     #[inline]
     fn encode(self) -> Vec<u8> {

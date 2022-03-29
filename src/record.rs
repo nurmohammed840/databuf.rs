@@ -22,11 +22,8 @@ impl FixedLenInt for usize {}
 /// let record: Record<u8, &str> = "HelloWorld".into();
 /// assert_eq!(record.len(), 10);
 ///
-/// let mut writer = [0; 16].into();
-/// record.serialize(&mut writer);
-///
-/// // One byte for length `u8` and 10 bytes for string. (Total 11 bytes written)
-/// assert_eq!(writer.offset, 11);
+/// let bytes = record.encode();
+/// assert_eq!(bytes.len(), 11);
 /// ```
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Record<Len: FixedLenInt, T> {

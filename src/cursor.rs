@@ -14,20 +14,21 @@ impl<T: Bytes> Cursor<T> {
     /// ```
     /// use bin_layout::{Cursor, ErrorKind};
     ///
-    /// let mut view = Cursor::new([0; 3]);
+    /// let mut view = Cursor::new(vec![0; 3]);
     ///
-    /// assert_eq!(view.write_slice([4, 2]), Ok(()));
-    /// assert_eq!(view.write_slice([1, 2, 3]), Err(ErrorKind::InsufficientBytes));
-    ///
-    /// assert_eq!(view.data, [4, 2, 0]);
+    /// view.write_slice([4, 2]);
     /// assert_eq!(view.offset, 2);
     /// ```
+    /// 
+    /// # Panics
+    /// This function may panic, if the data is slice `&mut [u8]`, and has not enough capacity.
+    ///
+    /// But If the data is vector `Vec<u8>`, then it may reserve extra capacity if necessary.
     #[inline]
     pub fn write_slice(&mut self, slice: impl AsRef<[u8]>) {
         self.offset = self.data.write_slice_at(self.offset, slice);
     }
 }
-
 
 impl<'de> Cursor<&'de [u8]> {
     /// Returns remaining slice from the current offset.

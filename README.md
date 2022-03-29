@@ -11,7 +11,7 @@ If you want to use big endian, you can set `BE` features flag. And for native en
 
 ```toml
 [dependencies]
-bin-layout = { version = "2", features = ["BE"] }
+bin-layout = { version = "3", features = ["BE"] }
 ```
 
 ### Example
@@ -29,7 +29,7 @@ struct Car<'a> {
 #[derive(DataType)]
 struct Company<'a> { name: String, cars: Vec<Car<'a>> }
 
-let company = Company {
+let old = Company {
     name: "Tesla".into(),
     cars: vec![
         Car { name: "Model S", year: 2018, is_new: true },
@@ -37,10 +37,8 @@ let company = Company {
     ],
 };
 
-let mut buf = [0; 64];
-
-company.encode(buf.as_mut()).unwrap();
-let company = Company::decode(buf.as_ref()).unwrap();
+let bytes = old.encode();
+let new = Company::decode(&bytes).unwrap();
 ```
 
 ### Data Type

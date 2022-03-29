@@ -53,7 +53,7 @@ There is no performance penalty for using this library. Or we can say there is z
     Its mean that no data is copied. Instead, the data is referenced.
     Which is only possible (safely) in rust, Other languages have to use unsafe operations.
     
-    ```rust
+    ```rust, ignore
     #[derive(DataType)]
     struct Msg<'a> {
         id: u8,
@@ -78,7 +78,7 @@ There is no performance penalty for using this library. Or we can say there is z
 
     For example, The following structs, don't have any dynamic data. So we can have a fixed size buffer at compile time.
 
-    ```rust
+    ```rust, ignore
     #[derive(DataType)]
     struct Date {
         year: u16,
@@ -105,7 +105,7 @@ There is no performance penalty for using this library. Or we can say there is z
 
     For example:
 
-    ```rust
+    ```rust, ignore
     #[derive(DataType)]
     struct Student {
         age: u8,
@@ -131,7 +131,7 @@ It's very easy to implement a custom serializer/deserializer for your own data t
 
 For example:
 
-```rust
+```rust, ignore
 #[derive(DataType)]
 struct Bar(u16);
 struct Foo { x: u8, y: Bar }

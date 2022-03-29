@@ -16,64 +16,39 @@ pub trait Bytes {
     fn as_mut(&mut self) -> &mut [u8];
 }
 
-impl Bytes for &mut Vec<u8> {
-    fn write_slice_at(&mut self, offset: usize, slice: impl AsRef<[u8]>) -> usize {
-        let src = slice.as_ref();
-        let count = src.len();
-        unsafe {
-            let total_len = offset + count;
-            self.extend_len(total_len, count);
-            std::ptr::copy_nonoverlapping(src.as_ptr(), self.as_mut_ptr().add(offset), count);
-            total_len
+macro_rules! impls {
+    [$ty:ty : $func:item] => {
+        impl Bytes for $ty {
+            #[inline]
+            fn write_slice_at(&mut self, offset: usize, slice: impl AsRef<[u8]>) -> usize {
+                let src = slice.as_ref();
+                let count = src.len();
+                unsafe {
+                    let total_len = offset + count;
+                    self.extend_len(total_len, count);
+                    ptr::copy_nonoverlapping(src.as_ptr(), self.as_mut_ptr().add(offset), count);
+                    total_len
+                }
+            }
+            #[inline] fn as_ref(&mut self) -> &[u8] { self }
+            #[inline] fn as_mut(&mut self) -> &mut [u8] { self }
+            #[inline]
+            #[doc(hidden)]
+            $func
         }
-    }
+    };
+}
 
-    #[inline]
-    #[doc(hidden)]
+impls!(&mut Vec<u8>:
     unsafe fn extend_len(&mut self, total_len: usize, count: usize) {
         if total_len > self.len() {
             self.reserve(count);
             self.set_len(total_len);
         }
     }
-
-    #[inline]
-    fn as_ref(&mut self) -> &[u8] {
-        self
-    }
-    #[inline]
-    fn as_mut(&mut self) -> &mut [u8] {
-        self
-    }
-}
-
-impl Bytes for &mut [u8] {
-    fn write_slice_at(&mut self, offset: usize, slice: impl AsRef<[u8]>) -> usize {
-        let src = slice.as_ref();
-        let count = src.len();
-
-        unsafe {
-            let total_len = offset + count;
-            self.extend_len(total_len, count);
-            ptr::copy_nonoverlapping(src.as_ptr(), self.as_mut_ptr().add(offset), count);
-            total_len
-        }
-    }
-
-    #[inline]
-    fn as_ref(&mut self) -> &[u8] {
-        self
-    }
-    #[inline]
-    fn as_mut(&mut self) -> &mut [u8] {
-        self
-    }
-
-    #[inline]
-    #[doc(hidden)]
+);
+impls!(&mut [u8]:
     unsafe fn extend_len(&mut self, total_len: usize, _: usize) {
-        if total_len > self.len() {
-            panic!("InsufficientBytes");
-        }
+        assert!(total_len <= self.len(), "total len: {total_len} <= buffer len: {}", self.len());
     }
-}
+);

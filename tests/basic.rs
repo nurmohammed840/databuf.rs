@@ -58,7 +58,7 @@ fn basic() {
             Student { age: 20, name: "Jui", gender: false, roll: 36 },
         ]
         .into(),
-    };    
+    };
     let mut buf = [0; 50];
 
     let mut writer = Cursor::new(buf.as_mut());

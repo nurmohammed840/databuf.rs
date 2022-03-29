@@ -37,44 +37,51 @@ pub struct Record<Len: FixedLenInt, T> {
 // ---------------------------------------------------------------------------------
 
 macro_rules! impls {
-    [$($tys:tt),* => $deserialize:item] => {
+    [$($tys:tt),* : $deserialize:item] => {
         impl<'de, Len> DataType<'de> for Record<Len, $($tys)*>
         where
             Len: DataType<'de> + FixedLenInt,
             usize: TryFrom<Len>,
         {
             #[inline]
-            fn size_hint(&self) -> usize { self.len() + 8 } // assume: 8 bytes for length
-
+            fn size_hint(&self) -> usize {
+                let bytes: &[u8] = self.as_ref();
+                Len::SIZE + bytes.len()
+            }
             #[inline]
             fn serialize(self, view: &mut Cursor<impl Bytes>) {
                 let len: Len = unsafe { self.data.len().try_into().unwrap_unchecked() };
                 len.serialize(view);
                 view.write_slice(self.data);
             }
-            #[inline]
-            $deserialize
+            #[inline] $deserialize
         }
     };
 }
-impls!(&, 'de, [u8] => fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
-    let len: usize = Len::deserialize(view)?.try_into().map_err(|_| InvalidLength)?;
-    view.read_slice(len).map(|bytes| bytes.into())
-});
-impls!(String => fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
-    let bytes: Record<Len, &'de [u8]> = Record::deserialize(view)?;
+impls!(&, 'de, [u8]:
+    fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
+        let len: usize = Len::deserialize(view)?.try_into().map_err(|_| InvalidLength)?;
+        view.read_slice(len).map(|bytes| bytes.into())
+    }
+);
+impls!(String:
+    fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
+        let bytes: Record<Len, &'de [u8]> = Record::deserialize(view)?;
 
-    String::from_utf8(bytes.to_vec())
-        .map(|string| string.into())
-        .map_err(|_| InvalidUtf8)
-});
-impls!(&, 'de, str => fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
-    let bytes: Record<Len, &'de [u8]> = Record::deserialize(view)?;
+        String::from_utf8(bytes.to_vec())
+            .map(|string| string.into())
+            .map_err(|_| InvalidUtf8)
+    }
+);
+impls!(&, 'de, str:
+    fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
+        let bytes: Record<Len, &'de [u8]> = Record::deserialize(view)?;
 
-    core::str::from_utf8(bytes.data)
-        .map(|string| string.into())
-        .map_err(|_| InvalidUtf8)
-});
+        core::str::from_utf8(bytes.data)
+            .map(|string| string.into())
+            .map_err(|_| InvalidUtf8)
+    }
+);
 
 impl<'de, Len, T> DataType<'de> for Record<Len, Vec<T>>
 where
@@ -83,9 +90,15 @@ where
     usize: TryFrom<Len>,
 {
     #[inline]
+    fn size_hint(&self) -> usize {
+        Len::SIZE + self.iter().map(T::size_hint).sum::<usize>()
+    }
+
+    #[inline]
     fn serialize(self, view: &mut Cursor<impl Bytes>) {
         let len: Len = unsafe { self.data.len().try_into().unwrap_unchecked() };
         len.serialize(view);
+        
         for record in self.data {
             record.serialize(view);
         }
@@ -101,12 +114,6 @@ where
             vec.push(T::deserialize(view)?);
         }
         Ok(vec.into())
-    }
-
-    #[inline]
-    fn size_hint(&self) -> usize {
-        // assume: 8 bytes for length
-        8 + self.iter().map(T::size_hint).sum::<usize>() 
     }
 }
 

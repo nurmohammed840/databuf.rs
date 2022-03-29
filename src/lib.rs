@@ -16,6 +16,7 @@ pub use bytes::*;
 pub use cursor::*;
 pub use derive::*;
 pub use record::*;
+pub use lencoder::Lencoder;
 
 /// Shortcut for `Result<T, bin_layout::ErrorKind>`
 pub type Result<T> = core::result::Result<T, ErrorKind>;
@@ -47,8 +48,15 @@ impl std::error::Error for ErrorKind {}
 ///
 /// `Vec`, `String`, `&[T]`, `&str` etc.. are encoded with their length value first, Following by each entry.
 pub trait DataType<'de>: Sized {
+    /// The size of the data type in bytes. (padding not included)
     const SIZE: usize = size_of::<Self>();
 
+    /// If `true`, the data type could be fixed or dynamic sized,
+    ///
+    /// But if `false`, then the data type is always fixed sized.
+    const IS_DYNAMIC: bool = true;
+
+    /// Calculate total estimated size of the data structure in bytes.
     #[inline]
     fn size_hint(&self) -> usize {
         Self::SIZE
@@ -78,8 +86,7 @@ pub trait DataType<'de>: Sized {
     #[inline]
     fn encode(self) -> Vec<u8> {
         let mut vec = Vec::with_capacity(self.size_hint());
-        let mut cursor: Cursor<&mut Vec<u8>> = (&mut vec).into();
-        self.serialize(&mut cursor);
+        self.serialize(&mut (&mut vec).into());
         vec
     }
 

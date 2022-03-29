@@ -1,6 +1,8 @@
 use crate::*;
 
 impl DataType<'_> for bool {
+    const IS_DYNAMIC: bool = false;
+
     #[inline]
     fn serialize(self, view: &mut Cursor<impl Bytes>) {
         u8::serialize(self.into(), view);
@@ -11,6 +13,8 @@ impl DataType<'_> for bool {
     }
 }
 impl DataType<'_> for char {
+    const IS_DYNAMIC: bool = false;
+
     #[inline]
     fn serialize(self, view: &mut Cursor<impl Bytes>) {
         u32::serialize(self.into(), view);
@@ -23,6 +27,8 @@ impl DataType<'_> for char {
 macro_rules! impl_data_type_for {
     [$($rty:ty)*] => ($(
         impl DataType<'_> for $rty {
+            const IS_DYNAMIC: bool = false;
+
             #[inline]
             fn serialize(self, view: &mut Cursor<impl Bytes>) {
                 unsafe {
@@ -78,7 +84,6 @@ macro_rules! write_num {
         write_unaligned(&$val as *const Self as *const u8, $dst, size_of::<Self>());
     )
 }
-
 impl_data_type_for!(
     u8 u16 u32 u64 u128
     i8 i16 i32 i64 i128

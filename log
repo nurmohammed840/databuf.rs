@@ -1,0 +1,1 @@
+" + <&'astr as DataType>::SIZE + <[Subject < 'a > ; 4] as DataType>::SIZE + <Record<u8,Vec<Student<'a>>> as DataType>::SIZE"

@@ -65,8 +65,6 @@ There is no performance penalty for using this library. Or we can say there is z
 
     let msg = Msg::decode(&bytes).unwrap();
 
-    // drop(msg); // Uncomment this line, If you want to see error at complie time!
-
     assert_eq!(msg.id, 42);
     assert_eq!(msg.data, "Hello, World!"); // Here, data is referenced.
     ```
@@ -85,7 +83,6 @@ There is no performance penalty for using this library. Or we can say there is z
         month: u8,
         day: u8,
     }
-
     #[derive(DataType)]
     struct Record {
         id: u32,
@@ -94,14 +91,14 @@ There is no performance penalty for using this library. Or we can say there is z
     }
 
     let buf = [0; Record::SIZE]; // 520 bytes buffer.
-    let record = Record { /* ... */ }.serialize(&mut buf.as_mut().into());
+    Record { /* ... */ }.serialize(&mut buf.as_mut().into());
     ```
 
     What happens if we have a dynamic data (like vector, string, etc...) ? Then we have to allocate memory at runtime.
     
     But how much memory we need to store the whole data ? When a vector is full, It creates a new vector with larger size, Then move all data to the new vector. Which is expensive.
 
-    Well everydata type has a method called `size_hint`, which calculates the total size of the data at runtime. Which is cheap to compute.
+    Well datatype has a method called `size_hint`, which calculates the total size of the data at runtime. Which is cheap to compute. `encode` method use `size_hint` function internaly.
 
     For example:
 
@@ -124,7 +121,7 @@ There is no performance penalty for using this library. Or we can say there is z
 
 ###  Flexibility
 
-It work by mantaining a [cursor](https://docs.rs/bin-layout/latest/bin_layout/struct.Cursor.html). Which is a pointer to the current position in the buffer.
+It work by mantaining a [Cursor](https://docs.rs/bin-layout/latest/bin_layout/struct.Cursor.html). Which is a pointer to the current position in the buffer.
 And the cursor is updated when reading or writing data to the buffer.
 
 It's very easy to implement a custom serializer/deserializer for your own data type.

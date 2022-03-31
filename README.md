@@ -128,7 +128,9 @@ It's very easy to implement a custom serializer/deserializer for your own data t
 
 For example:
 
-```rust, ignore
+```rust
+use bin_layout::*;
+
 #[derive(DataType)]
 struct Bar(u16);
 struct Foo { x: u8, y: Bar }
@@ -138,7 +140,7 @@ impl DataType<'_> for Foo {
         self.x.serialize(c);
         self.y.serialize(c);
     }
-    fn deserialize(c: &mut Cursor<&[u8]>) -> Result<Self, ErrorKind> {
+    fn deserialize(c: &mut Cursor<&[u8]>) -> Result<Self> {
         Ok(Self {
             x: u8::deserialize(c)?,
             y: Bar::deserialize(c)?,

@@ -1,5 +1,20 @@
-#![cfg_attr(feature = "nightly", feature(array_try_map))]
 #![doc = include_str!("../README.md")]
+#![cfg_attr(feature = "nightly", feature(array_try_map))]
+
+#![cfg_attr(feature = "auto_traits", feature(auto_traits))]
+#![cfg_attr(feature = "auto_traits", feature(negative_impls))]
+#[cfg(feature = "auto_traits")]
+pub use auto_traits::*;
+#[cfg(feature = "auto_traits")]
+mod auto_traits {
+    pub unsafe auto trait StaticSized {}
+    
+    impl !StaticSized for &str {}
+    impl !StaticSized for String {}
+    impl<T> !StaticSized for &[T] {}
+    impl<T> !StaticSized for Vec<T> {}
+}
+
 
 mod bytes;
 mod cursor;
@@ -12,9 +27,9 @@ use core::mem::{size_of, MaybeUninit};
 use core::{fmt, ptr};
 use ErrorKind::*;
 
+pub use bin_layout_derive::*;
 pub use bytes::*;
 pub use cursor::*;
-pub use derive::*;
 pub use lencoder::Lencoder;
 pub use record::*;
 

@@ -23,7 +23,7 @@ NE = []         # Native Endian
 L3 = []         # 22 bits
 
 [dependencies]
-bin-layout-derive = { path = "./bin_layout_derive", version = "0.1" }
+bin-layout-derive = "0.1"
 
 [workspace]
 members = ["bin_layout_derive"]

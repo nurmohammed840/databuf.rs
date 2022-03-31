@@ -1,55 +1,57 @@
 use crate::*;
 
-impl DataType<'_> for bool {
-    const IS_DYNAMIC: bool = false;
-
+impl Encoder for bool {
     #[inline]
-    fn serialize(self, view: &mut Cursor<impl Bytes>) {
-        u8::serialize(self.into(), view);
-    }
-    #[inline]
-    fn deserialize(view: &mut Cursor<&[u8]>) -> Result<Self> {
-        u8::deserialize(view).map(|v| v != 0)
+    fn encoder(self, c: &mut Cursor<impl Bytes>) {
+        u8::encoder(self.into(), c);
     }
 }
-impl DataType<'_> for char {
-    const IS_DYNAMIC: bool = false;
-
+impl<E: Error> Decoder<'_, E> for bool {
     #[inline]
-    fn serialize(self, view: &mut Cursor<impl Bytes>) {
-        u32::serialize(self.into(), view);
-    }
-    #[inline]
-    fn deserialize(view: &mut Cursor<&[u8]>) -> Result<Self> {
-        char::from_u32(u32::deserialize(view)?).ok_or(InvalidChar)
+    fn decoder(c: &mut Cursor<&[u8]>) -> Result<Self, E> {
+        u8::decoder(c).map(|b| b != 0)
     }
 }
+impl Encoder for char {
+    #[inline]
+    fn encoder(self, c: &mut Cursor<impl Bytes>) {
+        u32::encoder(self.into(), c);
+    }
+}
+impl<E: Error> Decoder<'_, E> for char {
+    #[inline]
+    fn decoder(c: &mut Cursor<&[u8]>) -> Result<Self, E> {
+        char::from_u32(u32::decoder(c)?).ok_or_else(E::invalid_char)
+    }
+}
+
 macro_rules! impl_data_type_for {
     [$($rty:ty)*] => ($(
-        impl DataType<'_> for $rty {
-            const IS_DYNAMIC: bool = false;
-
+        impl Encoder for $rty {
+            // const IS_DYNAMIC: bool = false;
             #[inline]
-            fn serialize(self, view: &mut Cursor<impl Bytes>) {
+            fn encoder(self, c: &mut Cursor<impl Bytes>) {
                 unsafe {
-                    let data = view.data.as_mut();
-                    let dst = data.as_mut_ptr().add(view.offset);
+                    let data = c.data.as_mut();
+                    let dst = data.as_mut_ptr().add(c.offset);
 
-                    let total_len = view.offset + size_of::<Self>();
-                    view.data.new_len(total_len, size_of::<Self>());
+                    let total_len = c.offset + size_of::<Self>();
+                    c.data.new_len(total_len, size_of::<Self>());
 
-                    view.offset = total_len;
+                    c.offset = total_len;
                     write_num!(self, dst);
                 }
             }
+        }
+        impl<E: Error> Decoder<'_, E> for $rty {
             #[inline]
-            fn deserialize(view: &mut Cursor<&[u8]>) -> Result<Self> {
+            fn decoder(c: &mut Cursor<&[u8]>) -> Result<Self, E> {
                 unsafe {
-                    let total_len = view.offset + size_of::<Self>();
-                    if total_len > view.data.len() { return Err(InsufficientBytes); }
-                    
-                    let src = view.data.as_ptr().add(view.offset);
-                    view.offset = total_len;
+                    let total_len = c.offset + size_of::<Self>();
+                    if total_len > c.data.len() { return Err(E::insufficient_bytes()); }
+
+                    let src = c.data.as_ptr().add(c.offset);
+                    c.offset = total_len;
                     read_num!(src);
                 };
             }

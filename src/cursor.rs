@@ -19,7 +19,7 @@ impl<T: Bytes> Cursor<T> {
     /// view.write_slice([4, 2]);
     /// assert_eq!(view.offset, 2);
     /// ```
-    /// 
+    ///
     /// # Panics
     /// This function may panic, if the data is slice `&mut [u8]`, and has not enough capacity.
     ///
@@ -61,15 +61,11 @@ impl<'de> Cursor<&'de [u8]> {
     /// assert!(view.read_slice(3).is_err());
     /// ```
     #[inline]
-    pub fn read_slice(&mut self, len: usize) -> Result<&'de [u8]> {
+    pub fn read_slice(&mut self, len: usize) -> Option<&'de [u8]> {
         let total_len = self.offset + len;
-        let slice = self
-            .data
-            .get(self.offset..total_len)
-            .ok_or(InsufficientBytes)?;
-
+        let slice = self.data.get(self.offset..total_len)?;
         self.offset = total_len;
-        Ok(slice)
+        Some(slice)
     }
 }
 

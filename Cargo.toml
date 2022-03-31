@@ -1,6 +1,6 @@
 [package]
 name = "bin-layout"
-version = "3.0.2"
+version = "3.1.0"
 edition = "2021"
 
 description = "This library used to serialize and deserialize data in binary format."
@@ -10,7 +10,6 @@ license = "Apache-2.0"
 keywords = ["binary", "encode", "decode", "serialize", "deserialize"]
 
 [features]
-
 
 # Enable nightly features to optimize serialization (`[N; T]`) for performance
 nightly = []
@@ -24,4 +23,7 @@ NE = []         # Native Endian
 L3 = []         # 22 bits
 
 [dependencies]
-bin-layout-derive = { path = "./bin_layout_derive", version = "1" }
+bin-layout-derive = { path = "./bin_layout_derive", version = "0.1" }
+
+[workspace]
+members = ["bin_layout_derive"]

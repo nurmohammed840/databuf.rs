@@ -36,12 +36,17 @@ pub use record::*;
 /// Shortcut for `Result<T, bin_layout::ErrorKind>`
 pub type Result<T> = core::result::Result<T, ErrorKind>;
 
+/// The kind of error that occurred during encoding or decoding.
+#[non_exhaustive]
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum ErrorKind {
+    /// The input data was too short to decode.
     InsufficientBytes,
+    /// The input data was too long to decode.
     InvalidLength,
+    /// The input data was not in a valid format.
     InvalidInput,
-    LenOverflow,
+    /// Unsupported type.
     Unsupported,
     InvalidType,
     InvalidData,

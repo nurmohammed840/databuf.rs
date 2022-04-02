@@ -12,6 +12,7 @@ impl<E: Error> Decoder<'_, E> for bool {
         u8::decoder(c).map(|b| b != 0)
     }
 }
+
 impl Encoder for char {
     #[inline]
     fn encoder(self, c: &mut Cursor<impl Bytes>) {
@@ -21,7 +22,7 @@ impl Encoder for char {
 impl<E: Error> Decoder<'_, E> for char {
     #[inline]
     fn decoder(c: &mut Cursor<&[u8]>) -> Result<Self, E> {
-        char::from_u32(u32::decoder(c)?).ok_or_else(E::invalid_char)
+        char::from_u32(u32::decoder(c)?).ok_or_else(E::invalid_data)
     }
 }
 

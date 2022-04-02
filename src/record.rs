@@ -34,57 +34,67 @@ pub struct Record<Len: FixedLenInt, T> {
 // ---------------------------------------------------------------------------------
 
 macro_rules! impls {
-    [$($tys:tt),* : $deserialize:item] => {
-        impl<'de, Len> DataType<'de> for Record<Len, $($tys)*>
-        where
-            Len: DataType<'de> + FixedLenInt,
-            usize: TryFrom<Len>,
-        {
+    [Encoder for $($ty:ty),*] => {$(
+        impl<Len: Encoder + FixedLenInt> Encoder for Record<Len, $ty> {
             #[inline]
             fn size_hint(&self) -> usize {
                 let bytes: &[u8] = self.as_ref();
                 Len::SIZE + bytes.len()
             }
             #[inline]
-            fn serialize(self, view: &mut Cursor<impl Bytes>) {
+            fn encoder(self, c: &mut Cursor<impl Bytes>) {
                 let len: Len = unsafe { self.data.len().try_into().unwrap_unchecked() };
-                len.serialize(view);
-                view.write_slice(self.data);
+                len.encoder(c);
+                c.write_slice(self.data);
             }
-            #[inline] $deserialize
         }
-    };
+    )*};
 }
-impls!(&, 'de, [u8]:
-    fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
-        let len: usize = Len::deserialize(view)?.try_into().map_err(|_| InvalidLength)?;
-        view.read_slice(len).map(|bytes| bytes.into())
-    }
-);
-impls!(String:
-    fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
-        let bytes: Record<Len, &'de [u8]> = Record::deserialize(view)?;
+impls!(Encoder for &[u8], &str, String);
 
-        String::from_utf8(bytes.to_vec())
-            .map(|string| string.into())
-            .map_err(|_| InvalidUtf8)
+impl<'de, E: Error, Len> Decoder<'de, E> for Record<Len, &'de [u8]>
+where
+    usize: TryFrom<Len>,
+    Len: FixedLenInt + Decoder<'de, E>,
+{
+    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
+        let len: usize = Len::decoder(c)?.try_into().map_err(|_| E::invalid_data())?;
+        c.read_slice(len).map(|bytes| bytes.into())
     }
-);
-impls!(&, 'de, str:
-    fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
-        let bytes: Record<Len, &'de [u8]> = Record::deserialize(view)?;
+}
+
+impl<'de, E: Error, Len> Decoder<'de, E> for Record<Len, &'de str>
+where
+    usize: TryFrom<Len>,
+    Len: FixedLenInt + Decoder<'de, E>,
+{
+    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
+        let bytes: Record<Len, &'de [u8]> = Record::decoder(c)?;
 
         core::str::from_utf8(bytes.data)
             .map(|string| string.into())
-            .map_err(|_| InvalidUtf8)
+            .map_err(E::utf8_err)
     }
-);
+}
 
-impl<'de, Len, T> DataType<'de> for Record<Len, Vec<T>>
+impl<'de, E: Error, Len> Decoder<'de, E> for Record<Len, String>
 where
-    T: DataType<'de>,
-    Len: DataType<'de> + FixedLenInt,
     usize: TryFrom<Len>,
+    Len: FixedLenInt + Decoder<'de, E>,
+{
+    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
+        let bytes: Record<Len, &'de [u8]> = Record::decoder(c)?;
+
+        String::from_utf8(bytes.to_vec())
+            .map(|string| string.into())
+            .map_err(E::from_utf8_err)
+    }
+}
+
+impl<Len, T> Encoder for Record<Len, Vec<T>>
+where
+    T: Encoder,
+    Len: Encoder + FixedLenInt,
 {
     #[inline]
     fn size_hint(&self) -> usize {
@@ -92,23 +102,29 @@ where
     }
 
     #[inline]
-    fn serialize(self, view: &mut Cursor<impl Bytes>) {
+    fn encoder(self, c: &mut Cursor<impl Bytes>) {
         let len: Len = unsafe { self.data.len().try_into().unwrap_unchecked() };
-        len.serialize(view);
-        
+        len.encoder(c);
+
         for record in self.data {
-            record.serialize(view);
+            record.encoder(c);
         }
     }
+}
+
+impl<'de, E: Error, Len, T> Decoder<'de, E> for Record<Len, Vec<T>>
+where
+    T: Decoder<'de, E>,
+    usize: TryFrom<Len>,
+    Len: Decoder<'de, E> + FixedLenInt,
+{
     #[inline]
-    fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
-        let len: usize = Len::deserialize(view)?
-            .try_into()
-            .map_err(|_| InvalidLength)?;
+    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
+        let len: usize = Len::decoder(c)?.try_into().map_err(|_| E::invalid_data())?;
 
         let mut vec = Vec::with_capacity(len as usize);
         for _ in 0..len {
-            vec.push(T::deserialize(view)?);
+            vec.push(T::decoder(c)?);
         }
         Ok(vec.into())
     }

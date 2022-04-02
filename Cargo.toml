@@ -11,7 +11,7 @@ keywords = ["binary", "encode", "decode", "serialize", "deserialize"]
 
 [features]
 
-# Enable nightly features to optimize serialization (`[N; T]`) for performance
+# Enable nightly features to enable optimization and performance.
 nightly = []
 auto_traits = ["nightly"]
 
@@ -23,7 +23,7 @@ NE = []         # Native Endian
 L3 = []         # 22 bits
 
 [dependencies]
-bin-layout-derive = "0.1"
+bin-layout-derive = { path = "./bin_layout_derive", version = "0.2" }
 
 [workspace]
 members = ["bin_layout_derive"]

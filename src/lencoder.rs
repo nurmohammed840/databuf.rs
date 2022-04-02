@@ -47,17 +47,16 @@ pub use L3 as Lencoder;
 
 
 macro_rules! def {
-    [$name:ident($ty:ty), LenSize: $size:literal, MAX: $MAX:literal, $serialize:item, $deserialize:item] => {
+    [$name:ident($ty:ty), LenSize: $size:literal, MAX: $MAX:literal, $encoder:item, $decoder:item] => {
         #[derive(Default, Debug, Clone, Copy)]
         pub struct $name(pub $ty);
         impl $name { pub const MAX: $ty = $MAX; }
-        impl DataType<'_> for $name {
-            const SIZE: usize = $size;
-            const IS_DYNAMIC: bool = false;
 
-            #[inline] $serialize
-            #[inline] $deserialize
+        impl Encoder for $name {
+            const SIZE: usize = $size;
+            #[inline] $encoder
         }
+        impl<E: Error> Decoder<'_, E> for $name { #[inline] $decoder }
         impl From<$ty> for $name { fn from(num: $ty) -> Self { Self(num) } }
         impl core::ops::Deref for $name {
             type Target = $ty;
@@ -68,27 +67,28 @@ macro_rules! def {
         }
     };
 }   
+
 def!(
     L2(u16),
     LenSize: 2,
     MAX: 0x7FFF,
-    fn serialize(self, view: &mut Cursor<impl Bytes>) {
+    fn encoder(self, c: &mut Cursor<impl Bytes>) {
         let num = self.0;
         let b1 = num as u8;
         if num < 128 {
-            b1.serialize(view); // No MSB is set, Bcs `num` is less then `128`
+            b1.encoder(c); // No MSB is set, Bcs `num` is less then `128`
         } else {
             debug_assert!(num <= Self::MAX);
             let b1 = 0x80 | b1; // 7 bits with MSB is set.
             let b2 = (num >> 7) as u8; // next 8 bits
-            view.write_slice([b1, b2]);
+            c.write_slice([b1, b2]);
         }
     },
-    fn deserialize(view: &mut Cursor<&[u8]>) -> Result<Self> {
-        let mut num = u8::deserialize(view)? as u16;
+    fn decoder(c: &mut Cursor<&[u8]>) -> Result<Self, E> {
+        let mut num = u8::decoder(c)? as u16;
         // if MSB is set, read another byte.
         if num >> 7 == 1 {
-            let snd = u8::deserialize(view)? as u16;
+            let snd = u8::decoder(c)? as u16;
             num = (num & 0x7F) | snd << 7; // num <- add 8 bits
         }
         Ok(Self(num))
@@ -98,40 +98,40 @@ def!(
     L3(u32),
     LenSize: 3,
     MAX: 0x3FFFFF,
-    fn serialize(self, view: &mut Cursor<impl Bytes>) {
+    fn encoder(self, c: &mut Cursor<impl Bytes>) {
         let num = self.0;
         let b1 = num as u8;
         if num < 128 {
-            b1.serialize(view);
+            b1.encoder(c);
         }
         else {
             let b1 = b1 & 0x3F; // read last 6 bits
             let b2 = (num >> 6) as u8; // next 8 bits
             if num < 0x4000 {
                 // set first 2 bits  of `b1` to `10`
-                view.write_slice([0x80 | b1, b2]);
+                c.write_slice([0x80 | b1, b2]);
             }
             else {
                 debug_assert!(num <= Self::MAX);
                 let b3 = (num >> 14) as u8; // next 8 bits
                 // set first 2 bits  of `b1` to `11`
-                view.write_slice([0xC0 | b1, b2, b3]);
+                c.write_slice([0xC0 | b1, b2, b3]);
             }
         }
     },
-    fn deserialize(view: &mut Cursor<& [u8]>) -> Result<Self> {
-        let num = u8::deserialize(view)? as u32;
+    fn decoder(c: &mut Cursor<& [u8]>) -> Result<Self, E> {
+        let num = u8::decoder(c)? as u32;
         // if 1st bit is `0`
         let num = if num >> 7 == 0 { num }
         // and 2nd bit is `0`
         else if num >> 6 == 2 {
-            let b2 = u8::deserialize(view)? as u32;
+            let b2 = u8::decoder(c)? as u32;
             (num & 0x3F) | b2 << 6
         } else  {
             // At this point, only possible first 2 bits are `11`
-            let b2 = *view.data.get(view.offset).ok_or(InsufficientBytes)? as u32;
-            let b3 = *view.data.get(view.offset + 1).ok_or(InsufficientBytes)? as u32;
-            view.offset += 2;
+            let b2 = *c.data.get(c.offset).ok_or_else(E::insufficient_bytes)? as u32;
+            let b3 = *c.data.get(c.offset + 1).ok_or_else(E::insufficient_bytes)? as u32;
+            c.offset += 2;
 
             (num & 0x3F)  // get last 6 bits
             | b2 << 6     // add 8 bits from 2nd byte

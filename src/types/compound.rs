@@ -4,23 +4,28 @@ macro_rules! impl_data_type_for_typle {
     [$(($($name: ident : $idx: tt),*)),*]  => (
         #[allow(unused_variables)]
         $(
-            impl<'de, $($name,)*> DataType<'de> for ($($name,)*)
+            impl<$($name,)*> Encoder for ($($name,)*)
             where
-                $($name: DataType<'de>,)*
+                $($name: Encoder,)*
             {
                 const SIZE: usize = 0 $(+$name::SIZE)*;
-                const IS_DYNAMIC: bool = true $(&& $name::IS_DYNAMIC)*;
-
+                // const IS_DYNAMIC: bool = true $(&& $name::IS_DYNAMIC)*;
                 #[inline]
                 fn size_hint(&self) -> usize { 0 $(+ self.$idx.size_hint())* }
 
                 #[inline]
-                fn serialize(self, view: &mut Cursor<impl Bytes>) { 
-                    $(self.$idx.serialize(view);)*
+                fn encoder(self, view: &mut Cursor<impl Bytes>) {
+                    $(self.$idx.encoder(view);)*
                 }
+            }
+
+            impl<'de, E, $($name,)*> Decoder<'de, E> for ($($name,)*)
+            where
+                $($name: Decoder<'de, E>,)*
+            {
                 #[inline]
-                fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> { 
-                    Ok(($($name::deserialize(view)?),*)) 
+                fn decoder(view: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
+                    Ok(($($name::decoder(view)?),*))
                 }
             }
         )*
@@ -28,52 +33,55 @@ macro_rules! impl_data_type_for_typle {
 }
 impl_data_type_for_typle!(
     (),
-    (A:0, B:1),
-    (A:0, B:1, C:2),
-    (A:0, B:1, C:2, D:3),
-    (A:0, B:1, C:2, D:3, E:4),
-    (A:0, B:1, C:2, D:3, E:4, F:5),
-    (A:0, B:1, C:2, D:3, E:4, F:5, G:6)
+    (T:0, T2:1),
+    (T:0, T2:1, T3:2),
+    (T:0, T2:1, T3:2, T4:3),
+    (T:0, T2:1, T3:2, T4:3, T5:4),
+    (T:0, T2:1, T3:2, T4:3, T5:4, T6:5),
+    (T:0, T2:1, T3:2, T4:3, T5:4, T6:5, T7:6)
 );
 
-impl<'de, T: DataType<'de>, const N: usize> DataType<'de> for [T; N] {
+impl<T: Encoder, const N: usize> Encoder for [T; N] {
     const SIZE: usize = N * T::SIZE;
-    const IS_DYNAMIC: bool = T::IS_DYNAMIC;
-
+    // const IS_DYNAMIC: bool = T::IS_DYNAMIC;
     #[inline]
     fn size_hint(&self) -> usize {
-        self.iter().map(T::size_hint).sum() 
+        self.iter().map(T::size_hint).sum()
     }
 
     #[inline]
-    fn serialize(self, view: &mut Cursor<impl Bytes>) {
+    fn encoder(self, view: &mut Cursor<impl Bytes>) {
         for item in self {
-            item.serialize(view);
+            item.encoder(view);
         }
     }
+}
+impl<'de, E, T: Decoder<'de, E>, const N: usize> Decoder<'de, E> for [T; N] {
     #[inline]
-    fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
+    fn decoder(view: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
         #[cfg(feature = "nightly")]
-        return [(); N].try_map(|_| T::deserialize(view));
+        return [(); N].try_map(|_| T::decoder(view));
 
         #[cfg(not(feature = "nightly"))]
         return (0..N)
-            .map(|_| T::deserialize(view))
-            .collect::<Result<Vec<_>>>()
+            .map(|_| T::decoder(view))
+            .collect::<Result<Vec<_>, _>>()
             .map(|v| unsafe { v.try_into().unwrap_unchecked() });
     }
 }
 
-impl<'de, const N: usize> DataType<'de> for &'de [u8; N] {
+impl<const N: usize> Encoder for &[u8; N] {
     const SIZE: usize = N;
-    const IS_DYNAMIC: bool = false;
-    
+    // const IS_DYNAMIC: bool = false;
     #[inline]
-    fn serialize(self, view: &mut Cursor<impl Bytes>) {
+    fn encoder(self, view: &mut Cursor<impl Bytes>) {
         view.write_slice(self);
     }
+}
+
+impl<'de, E: Error, const N: usize> Decoder<'de, E> for &'de [u8; N] {
     #[inline]
-    fn deserialize(view: &mut Cursor<&'de [u8]>) -> Result<Self> {
+    fn decoder(view: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
         view.read_slice(N)
             .map(|bytes| unsafe { bytes.try_into().unwrap_unchecked() })
     }

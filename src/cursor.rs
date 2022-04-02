@@ -61,11 +61,15 @@ impl<'de> Cursor<&'de [u8]> {
     /// assert!(view.read_slice(3).is_err());
     /// ```
     #[inline]
-    pub fn read_slice(&mut self, len: usize) -> Option<&'de [u8]> {
+    pub fn read_slice<E: Error>(&mut self, len: usize) -> Result<&'de [u8], E> {
         let total_len = self.offset + len;
-        let slice = self.data.get(self.offset..total_len)?;
+        let slice = self
+            .data
+            .get(self.offset..total_len)
+            .ok_or_else(E::insufficient_bytes)?;
+
         self.offset = total_len;
-        Some(slice)
+        Ok(slice)
     }
 }
 

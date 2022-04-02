@@ -63,7 +63,7 @@ There is no performance penalty for using this library. Or we can say there is z
     //           ^^  ^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     //           Id  Len                         Data
 
-    let out: Result<_, ()> = Msg::decode(&bytes);
+    let out: Result<Msg, ErrorKind> = Msg::decode(&bytes);
     let msg = out.unwrap();
 
     assert_eq!(msg.id, 42);

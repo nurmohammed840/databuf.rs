@@ -2,20 +2,19 @@ use crate::*;
 
 macro_rules! impl_data_type_for_typle {
     [$(($($name: ident : $idx: tt),*)),*]  => (
-        #[allow(unused_variables)]
         $(
             impl<$($name,)*> Encoder for ($($name,)*)
             where
                 $($name: Encoder,)*
             {
                 const SIZE: usize = 0 $(+$name::SIZE)*;
-                // const IS_DYNAMIC: bool = true $(&& $name::IS_DYNAMIC)*;
+
                 #[inline]
                 fn size_hint(&self) -> usize { 0 $(+ self.$idx.size_hint())* }
 
                 #[inline]
-                fn encoder(self, view: &mut Cursor<impl Bytes>) {
-                    $(self.$idx.encoder(view);)*
+                fn encoder(self, _c: &mut Cursor<impl Bytes>) {
+                    $(self.$idx.encoder(_c);)*
                 }
             }
 
@@ -24,8 +23,8 @@ macro_rules! impl_data_type_for_typle {
                 $($name: Decoder<'de, E>,)*
             {
                 #[inline]
-                fn decoder(view: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
-                    Ok(($($name::decoder(view)?),*))
+                fn decoder(_c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
+                    Ok(($($name::decoder(_c)?),*))
                 }
             }
         )*

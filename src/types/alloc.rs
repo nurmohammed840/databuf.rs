@@ -66,3 +66,21 @@ impl<'de, E: Error, T: Decoder<'de, E>> Decoder<'de, E> for Vec<T> {
         Ok(vec)
     }
 }
+
+// ---------------------------------------------------------------------
+
+impl<T: Encoder> Encoder for Box<T> {
+    const SIZE: usize = size_of::<T>();
+    fn encoder(self, c: &mut Cursor<impl Bytes>) {
+        T::encoder(*self, c);
+    }
+}
+
+impl<'de, T, E> Decoder<'de, E> for Box<T>
+where
+    T: Decoder<'de, E>,
+{
+    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
+        Ok(Box::new(T::decoder(c)?))
+    }
+}

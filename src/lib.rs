@@ -1,36 +1,25 @@
-#![allow(warnings)]
 #![doc = include_str!("../README.md")]
 #![cfg_attr(feature = "nightly", feature(array_try_map))]
 #![cfg_attr(feature = "auto_traits", feature(auto_traits))]
 #![cfg_attr(feature = "auto_traits", feature(negative_impls))]
 
-#[cfg(feature = "auto_traits")]
-pub use auto_traits::StaticSized;
-#[cfg(feature = "auto_traits")]
-mod auto_traits {
-    pub unsafe auto trait StaticSized {}
-
-    impl !StaticSized for &str {}
-    impl !StaticSized for String {}
-    impl<T> !StaticSized for &[T] {}
-    impl<T> !StaticSized for Vec<T> {}
-}
-
 mod bytes;
 mod cursor;
+mod error;
 pub mod lencoder;
 mod record;
 mod types;
-mod error;
 
 use core::convert::TryInto;
 use core::mem::{size_of, MaybeUninit};
 use core::{fmt, ptr};
 
+#[cfg(feature = "auto_traits")]
+pub use auto_traits::*;
 pub use bin_layout_derive::*;
-pub use error::*;
 pub use bytes::*;
 pub use cursor::*;
+pub use error::*;
 pub use lencoder::Lencoder;
 pub use record::*;
 
@@ -91,4 +80,14 @@ pub trait Decoder<'de, E>: Sized {
     fn decode(data: &'de [u8]) -> Result<Self, E> {
         Self::decoder(&mut Cursor::from(data))
     }
+}
+
+#[cfg(feature = "auto_traits")]
+mod auto_traits {
+    pub unsafe auto trait StaticSized {}
+
+    impl !StaticSized for &str {}
+    impl !StaticSized for String {}
+    impl<T> !StaticSized for &[T] {}
+    impl<T> !StaticSized for Vec<T> {}
 }

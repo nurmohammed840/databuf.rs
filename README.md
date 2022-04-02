@@ -41,8 +41,6 @@ let bytes = old.encode();
 let new: Result<_, ()> = Company::decode(&bytes);
 ```
 
-
-
 There is two main reasons for this library to exists. 
 
 ### 1. 🚀 Performance 🚀  
@@ -98,10 +96,10 @@ There is no performance penalty for using this library. Or we can say there is z
     let record = Record { id: 1, date: Date { year: 2018, month: 1, day: 1 }, value: [0; 512] };
 
     let mut buf = [0; Record::SIZE]; // 520 bytes buffer.
-    let cursor = buf.as_mut().into();
-    record.encoder(&mut buf.as_mut().into());
+    let mut cursor = buf.as_mut().into();
+    record.encoder(&mut cursor);
 
-    assert_eq!(cursor.remaining_slice().len(), 0);
+    assert_eq!(cursor.offset, Record::SIZE);
     ```
 
     What happens if we have a dynamic data (like vector, string, etc...) ? Then we have to allocate memory at runtime.
@@ -123,8 +121,7 @@ There is no performance penalty for using this library. Or we can say there is z
 
     let bytes = Student { roll: 42, name: "Jui".into() }.encode();
     ```
-    Here more nice things is that, `IS_DYNAMIC` is a compile time constant. So compiler can optimize this code. Meaning, this is no logical `if/else` condition in executable binary!
-    Thus, Zero-cost!
+
 
 ###  Flexibility
 
@@ -158,9 +155,9 @@ impl<E: Error> Decoder<'_, E> for Foo {
 }
 ```
 
-Note: `E: Error` is required for `Decoder` trait. Because This library allow user to define own error type. `Error` trait allow you to map internal error to your own error type.
+Note: `E: Error` is required for `Decoder` trait. Because This library allow user to define your own error type. `Error` trait allow you to map internal error to your own error type.
 
-Tips: If you don't want to use custom error type, you can use `Result<_, ()>`.
+Tips: If you don't want to use custom error type, you can use `Result<_, ()>`, Or use `bin_layout::ErrorKind` directly from this crate.
 
 ### Encoder, Decoder
 

@@ -54,11 +54,14 @@ impl<'de> Cursor<&'de [u8]> {
     ///
     /// # Example
     /// ```
-    /// use bin_layout::Cursor;
+    /// use bin_layout::{Cursor, ErrorKind};
     /// let mut view = Cursor::new([1, 2, 3].as_ref());
     ///
-    /// assert_eq!(view.read_slice(2), Ok([1, 2].as_ref()));
-    /// assert!(view.read_slice(3).is_err());
+    /// let slice: Result<_, ()> = view.read_slice(2);
+    /// assert_eq!(slice, Ok([1, 2].as_ref()));
+    /// 
+    /// let slice: Result<_, ErrorKind> = view.read_slice(3);
+    /// assert_eq!(slice, Err(ErrorKind::InsufficientBytes));
     /// ```
     #[inline]
     pub fn read_slice<E: Error>(&mut self, len: usize) -> Result<&'de [u8], E> {

@@ -1,44 +1,44 @@
-#![allow(warnings)]
-use std::str::FromStr;
-
 use proc_macro::TokenStream;
-use quote::{
-    __private::{Span, TokenStream as TokenS},
-    quote,
-};
-use syn::__private::ToTokens;
+use quote::quote;
+use std::str::FromStr;
 use syn::punctuated::Punctuated;
 use syn::*;
+
+use quote::__private::{Span, TokenStream as TokenS};
+use syn::__private::ToTokens;
 
 // -------------------------------------------------------------------------------------
 
 #[proc_macro_derive(Encoder)]
 pub fn encoder(input: TokenStream) -> TokenStream {
-    let DeriveInput { data, ident, generics, .. } = parse_macro_input!(input); 
-    let Generics { params, where_clause, .. } = generics; 
-    
-    let ig = encoder_trait_bounds(params.clone());
+    let DeriveInput {
+        data,
+        ident,
+        generics,
+        ..
+    } = parse_macro_input!(input);
+
+    let mod_generics = encoder_trait_bounds(generics.clone());
+    let (_, ty_generics, where_clause) = generics.split_for_impl();
     let (size, hint, encoder) = encoder_methods(data);
 
     TokenStream::from(quote! {
-        impl <#ig> bin_layout::Encoder for #ident <#params> #where_clause {
+        impl #mod_generics bin_layout::Encoder for #ident #ty_generics #where_clause {
             const SIZE: usize = #size;
             fn size_hint(&self) -> usize { #hint }
             fn encoder(self, c: &mut bin_layout::Cursor<impl bin_layout::Bytes>) { #encoder }
         }
     })
 }
-
 /// Add a bound `T: Encoder` to every type parameter T.
-fn encoder_trait_bounds(mut params: Punctuated<GenericParam, Token![,]>) -> TokenS {
-    for param in &mut params {
-        if let GenericParam::Type(ref mut type_param) = *param {
+fn encoder_trait_bounds(mut generics: Generics) -> Generics {
+    for param in &mut generics.params {
+        if let GenericParam::Type(type_param) = param {
             type_param.bounds.push(parse_quote!(bin_layout::Encoder));
         }
     }
-    params.to_token_stream()
+    generics
 }
-
 fn encoder_methods(data: Data) -> (TokenS, TokenS, TokenS) {
     let mut size = String::from('0');
     let mut hint = String::from("use bin_layout::Encoder as S; 0");
@@ -70,7 +70,6 @@ fn encoder_methods(data: Data) -> (TokenS, TokenS, TokenS) {
         TokenS::from_str(&encoder).unwrap(),
     )
 }
-
 fn write_size(s: &mut String, ty: Type) {
     s.push_str(" + <");
     s.push_str(&ty.to_token_stream().to_string());
@@ -91,14 +90,19 @@ fn write_encoder<T: std::fmt::Display>(s: &mut String, ident: T) {
 
 #[proc_macro_derive(Decoder)]
 pub fn decoder(input: TokenStream) -> TokenStream {
-    let DeriveInput { data, ident, generics, .. } = parse_macro_input!(input);
-    let Generics { params, where_clause, .. } = generics;
+    let DeriveInput {
+        data,
+        ident,
+        generics,
+        ..
+    } = parse_macro_input!(input);
 
-    let (lt, ig) = decoder_trait_bounds(params.clone());
+    let (lt, ig) = decoder_trait_bounds(&generics);
+    let (_, ty_generics, where_clause) = generics.split_for_impl();
     let decoder = decoder_method(data);
 
     TokenStream::from(quote! {
-        impl <#lt, Error: bin_layout::Error, #ig> bin_layout::Decoder<'de, Error> for #ident <#params> 
+        impl <#lt, #ig> bin_layout::Decoder<'de, Error> for #ident #ty_generics
         #where_clause
         {
             fn decoder(c: &mut bin_layout::Cursor<&'de [u8]>) -> core::result::Result<Self, Error> {
@@ -107,10 +111,7 @@ pub fn decoder(input: TokenStream) -> TokenStream {
         }
     })
 }
-
 fn decoder_method(data: Data) -> TokenS {
-    const DECODER: &str = "D::decoder(c)?,";
-    
     let mut decoder = String::from("use bin_layout::Decoder as D; Ok(Self");
     match data {
         Data::Struct(data_struct) => match data_struct.fields {
@@ -119,14 +120,14 @@ fn decoder_method(data: Data) -> TokenS {
                 for field in fields.named {
                     decoder.push_str(&field.ident.unwrap().to_string());
                     decoder.push(':');
-                    decoder.push_str(DECODER);
+                    decoder.push_str("D::decoder(c)?,");
                 }
                 decoder.push('}');
             }
             Fields::Unnamed(fields) => {
                 decoder.push('(');
                 for _ in fields.unnamed {
-                    decoder.push_str(DECODER);
+                    decoder.push_str("D::decoder(c)?,");
                 }
                 decoder.push(')');
             }
@@ -137,10 +138,10 @@ fn decoder_method(data: Data) -> TokenS {
     decoder.push(')');
     TokenS::from_str(&decoder).unwrap()
 }
-
 /// Add a bound `T: Decoder<'de, Error>` to every type parameter T.
-fn decoder_trait_bounds(mut params: Punctuated<GenericParam, Token![,]>) -> (LifetimeDef, TokenS) {
+fn decoder_trait_bounds(g: &Generics) -> (LifetimeDef, Punctuated<GenericParam, token::Comma>) {
     let mut de_lifetime = LifetimeDef::new(Lifetime::new("'de", Span::call_site()));
+    let mut params = g.params.clone();
     for param in &mut params {
         match param {
             GenericParam::Type(ty) => ty
@@ -151,5 +152,18 @@ fn decoder_trait_bounds(mut params: Punctuated<GenericParam, Token![,]>) -> (Lif
             _ => {}
         }
     }
-    (de_lifetime, params.to_token_stream())
+    let i = params
+        .iter()
+        .enumerate()
+        .find_map(|(i, g)| {
+            matches!(g, GenericParam::Type(..) | GenericParam::Const(..)).then(|| i)
+        })
+        .unwrap_or(params.len());
+
+    params.insert(
+        i,
+        GenericParam::Type(parse_quote!(Error: bin_layout::Error)),
+    );
+
+    (de_lifetime, params)
 }

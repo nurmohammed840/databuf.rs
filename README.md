@@ -11,22 +11,22 @@ If you want to use big endian, you can set `BE` features flag. And for native en
 
 ```toml
 [dependencies]
-bin-layout = { version = "3", features = ["BE"] }
+bin-layout = { version = "4", features = ["BE"] }
 ```
 
 ### Example
 
 ```rust
-use bin_layout::DataType;
+use bin_layout::*;
 
-#[derive(DataType)]
+#[derive(Encoder, Decoder)]
 struct Car<'a> {
     name: &'a str,  // Zero-Copy deserialization
     year: u16,
     is_new: bool,
 }
 
-#[derive(DataType)]
+#[derive(Encoder, Decoder)]
 struct Company<'a> { name: String, cars: Vec<Car<'a>> }
 
 let old = Company {
@@ -38,7 +38,7 @@ let old = Company {
 };
 
 let bytes = old.encode();
-let new = Company::decode(&bytes).unwrap();
+let new: Result<_, ()> = Company::decode(&bytes);
 ```
 
 
@@ -53,8 +53,10 @@ There is no performance penalty for using this library. Or we can say there is z
     Its mean that no data is copied. Instead, the data is referenced.
     Which is only possible (safely) in rust, Other languages have to use unsafe operations.
     
-    ```rust, ignore
-    #[derive(DataType)]
+    ```rust
+    use bin_layout::*;
+
+    #[derive(Encoder, Decoder)]
     struct Msg<'a> {
         id: u8,
         data: &'a str,
@@ -63,7 +65,8 @@ There is no performance penalty for using this library. Or we can say there is z
     //           ^^  ^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     //           Id  Len                         Data
 
-    let msg = Msg::decode(&bytes).unwrap();
+    let out: Result<_, ()> = Msg::decode(&bytes);
+    let msg = out.unwrap();
 
     assert_eq!(msg.id, 42);
     assert_eq!(msg.data, "Hello, World!"); // Here, data is referenced.
@@ -76,45 +79,49 @@ There is no performance penalty for using this library. Or we can say there is z
 
     For example, The following structs, don't have any dynamic data. So we can have a fixed size buffer at compile time.
 
-    ```rust, ignore
-    #[derive(DataType)]
+    ```rust
+    use bin_layout::*;
+
+    #[derive(Encoder, Decoder)]
     struct Date {
         year: u16,
         month: u8,
         day: u8,
     }
-    #[derive(DataType)]
+    #[derive(Encoder, Decoder)]
     struct Record {
         id: u32,
         date: Date,
         value: [u8; 512],
     }
 
-    let buf = [0; Record::SIZE]; // 520 bytes buffer.
-    Record { /* ... */ }.serialize(&mut buf.as_mut().into());
+    let record = Record { id: 1, date: Date { year: 2018, month: 1, day: 1 }, value: [0; 512] };
+
+    let mut buf = [0; Record::SIZE]; // 520 bytes buffer.
+    let cursor = buf.as_mut().into();
+    record.encoder(&mut buf.as_mut().into());
+
+    assert_eq!(cursor.remaining_slice().len(), 0);
     ```
 
     What happens if we have a dynamic data (like vector, string, etc...) ? Then we have to allocate memory at runtime.
     
     But how much memory we need to store the whole data ? When a vector is full, It creates a new vector with larger size, Then move all data to the new vector. Which is expensive.
 
-    Well datatype has a method called `size_hint`, which calculates the total size of the data at runtime. Which is cheap to compute. `encode` method use `size_hint` function internaly.
+    Well, Encoder has a method called `size_hint`, which calculates the total size of the data at runtime. Which is cheap to compute. `encode` method use `size_hint` function internaly.
 
     For example:
 
-    ```rust, ignore
-    #[derive(DataType)]
+    ```rust
+    use bin_layout::*;
+
+    #[derive(Encoder, Decoder)]
     struct Student {
-        age: u8,
         roll: u32,
         name: String, // Here we have a dynamic data.
     }
 
-    if Student::IS_DYNAMIC {
-        let bytes = Student { /* ... */ }.encode();
-    }
-    // else, we have a fixed size buffer.
-    else { /* ... */  } 
+    let bytes = Student { roll: 42, name: "Jui".into() }.encode();
     ```
     Here more nice things is that, `IS_DYNAMIC` is a compile time constant. So compiler can optimize this code. Meaning, this is no logical `if/else` condition in executable binary!
     Thus, Zero-cost!
@@ -131,27 +138,31 @@ For example:
 ```rust
 use bin_layout::*;
 
-#[derive(DataType)]
+#[derive(Encoder, Decoder)]
 struct Bar(u16);
 struct Foo { x: u8, y: Bar }
 
-impl DataType<'_> for Foo {
-    fn serialize(self, c: &mut Cursor<impl Bytes>) {
-        self.x.serialize(c);
-        self.y.serialize(c);
+impl Encoder for Foo {
+    fn encoder(self, c: &mut Cursor<impl Bytes>) {
+        self.x.encoder(c);
+        self.y.encoder(c);
     }
-    fn deserialize(c: &mut Cursor<&[u8]>) -> Result<Self> {
+}
+impl<E: Error> Decoder<'_, E> for Foo {
+    fn decoder(c: &mut Cursor<&[u8]>) -> Result<Self, E> {
         Ok(Self {
-            x: u8::deserialize(c)?,
-            y: Bar::deserialize(c)?,
+            x: u8::decoder(c)?,
+            y: Bar::decoder(c)?,
         })
     }
 }
 ```
 
-### Data Type
+Note: `E: Error` is required for `Decoder` trait. Because This library allow user to define own error type. `Error` trait allow you to map internal error to your own error type.
 
-The only trait you need to implement is [DataType](https://docs.rs/bin-layout/latest/bin_layout/trait.DataType.html).
+Tips: If you don't want to use custom error type, you can use `Result<_, ()>`.
+
+### Encoder, Decoder
 
 All [primitive types](https://doc.rust-lang.org/stable/rust-by-example/primitives.html) implement this trait.
 

@@ -17,7 +17,7 @@ impl FixedLenInt for usize {}
 /// ### Example
 ///
 /// ```rust
-/// use bin_layout::{Record, DataType};
+/// use bin_layout::{Record, Encoder};
 ///
 /// let record: Record<u8, &str> = "HelloWorld".into();
 /// assert_eq!(record.len(), 10);

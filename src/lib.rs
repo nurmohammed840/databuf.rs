@@ -27,7 +27,7 @@ use core::convert::TryInto;
 use core::mem::{size_of, MaybeUninit};
 use core::{fmt, ptr};
 
-// pub use bin_layout_derive::*;
+pub use bin_layout_derive::*;
 pub use error::*;
 pub use bytes::*;
 pub use cursor::*;
@@ -50,9 +50,9 @@ pub trait Encoder: Sized {
     /// ### Example
     ///
     /// ```
-    /// use bin_layout::DataType;
+    /// use bin_layout::Encoder;
     ///
-    /// #[derive(DataType)]
+    /// #[derive(Encoder)]
     /// struct FooBar {
     ///     foo: u8,
     ///     bar: [u8; 2],
@@ -73,37 +73,22 @@ pub trait Decoder<'de, E>: Sized {
     /// Deserialize the data from binary format.
     fn decoder(_: &mut Cursor<&'de [u8]>) -> Result<Self, E>;
 
-    /// Shortcut for `DataType::decoder(&mut Cursor::from(bytes))`
-    ///
     /// ### Example
     ///
     /// ```
-    /// use bin_layout::DataType;
+    /// use bin_layout::Decoder;
     ///
-    /// #[derive(DataType, PartialEq, Debug)]
+    /// #[derive(Decoder, PartialEq, Debug)]
     /// struct FooBar {
     ///     foo: u8,
     ///     bar: [u8; 2],
     /// }
     ///
-    /// let foobar = FooBar::decode(&[1, 2, 3]).unwrap();
-    /// assert_eq!(foobar, FooBar { foo: 1, bar: [2, 3] });
+    /// let foobar: Result<FooBar, ()> = FooBar::decode(&[1, 2, 3]);
+    /// assert_eq!(foobar, Ok(FooBar { foo: 1, bar: [2, 3] }));
     /// ```
     #[inline]
     fn decode(data: &'de [u8]) -> Result<Self, E> {
         Self::decoder(&mut Cursor::from(data))
     }
 }
-
-// struct Foo<'a> {
-//     foo: u8,
-//     bar: &'a [u8],
-//     string: &'a str,
-// }
-
-// impl<'a> Encoder for Foo<'a> {
-//     const SIZE: usize = size_of::<Self>();
-//     fn encoder(self, _: &mut Cursor<impl Bytes>) {
-//         todo!()
-//     }
-// }

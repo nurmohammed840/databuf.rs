@@ -37,8 +37,11 @@ macro_rules! impl_data_type_for {
                     let dst = data.as_mut_ptr().add(c.offset);
 
                     let total_len = c.offset + size_of::<Self>();
-                    c.data.new_len(total_len, size_of::<Self>());
-
+                    if total_len > c.data.as_ref().len() {
+                        c.data.reserve(size_of::<Self>());
+                        #[allow(clippy::uninit_vec)]
+                        c.data.set_len(total_len);
+                    }
                     c.offset = total_len;
                     write_num!(self, dst);
                 }

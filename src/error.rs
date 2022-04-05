@@ -60,11 +60,7 @@ impl Error for ErrorKind {
 
 impl Error for () {
     #[inline]
-    fn insufficient_bytes() -> Self {
-        ()
-    }
+    fn insufficient_bytes() -> Self {}
     #[inline]
-    fn invalid_data() -> Self {
-        ()
-    }
+    fn invalid_data() -> Self {}
 }

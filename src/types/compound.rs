@@ -13,7 +13,7 @@ macro_rules! impl_data_type_for_typle {
                 fn size_hint(&self) -> usize { 0 $(+ self.$idx.size_hint())* }
 
                 #[inline]
-                fn encoder(self, _c: &mut Cursor<impl Bytes>) {
+                fn encoder(self, _c: &mut impl Array<u8>) {
                     $(self.$idx.encoder(_c);)*
                 }
             }
@@ -49,21 +49,21 @@ impl<T: Encoder, const N: usize> Encoder for [T; N] {
     }
 
     #[inline]
-    fn encoder(self, view: &mut Cursor<impl Bytes>) {
+    fn encoder(self, c: &mut impl Array<u8>) {
         for item in self {
-            item.encoder(view);
+            item.encoder(c);
         }
     }
 }
 impl<'de, E, T: Decoder<'de, E>, const N: usize> Decoder<'de, E> for [T; N] {
     #[inline]
-    fn decoder(view: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
+    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
         #[cfg(feature = "nightly")]
-        return [(); N].try_map(|_| T::decoder(view));
+        return [(); N].try_map(|_| T::decoder(c));
 
         #[cfg(not(feature = "nightly"))]
         return (0..N)
-            .map(|_| T::decoder(view))
+            .map(|_| T::decoder(c))
             .collect::<Result<Vec<_>, _>>()
             .map(|v| unsafe { v.try_into().unwrap_unchecked() });
     }
@@ -73,15 +73,16 @@ impl<const N: usize> Encoder for &[u8; N] {
     const SIZE: usize = N;
     // const IS_DYNAMIC: bool = false;
     #[inline]
-    fn encoder(self, view: &mut Cursor<impl Bytes>) {
-        view.write_slice(self);
+    fn encoder(self, c: &mut impl Array<u8>) {
+        c.extend_from_slice(self);
     }
 }
 
 impl<'de, E: Error, const N: usize> Decoder<'de, E> for &'de [u8; N] {
     #[inline]
-    fn decoder(view: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
-        view.read_slice(N)
+    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
+        c.read_slice(N)
             .map(|bytes| unsafe { bytes.try_into().unwrap_unchecked() })
+            .ok_or_else(E::insufficient_bytes)
     }
 }

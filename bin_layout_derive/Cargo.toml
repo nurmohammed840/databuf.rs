@@ -1,6 +1,6 @@
 [package]
 name = "bin-layout-derive"
-version = "0.2.0"
+version = "0.3.0"
 edition = "2018"
 
 description = "This library used to serialize and deserialize data in binary format."

@@ -42,10 +42,10 @@ macro_rules! impls {
                 Len::SIZE + bytes.len()
             }
             #[inline]
-            fn encoder(self, c: &mut Cursor<impl Bytes>) {
+            fn encoder(self, c: &mut impl Array<u8>) {
                 let len: Len = unsafe { self.data.len().try_into().unwrap_unchecked() };
                 len.encoder(c);
-                c.write_slice(self.data);
+                c.extend_from_slice(self.data);
             }
         }
     )*};
@@ -59,7 +59,9 @@ where
 {
     fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
         let len: usize = Len::decoder(c)?.try_into().map_err(|_| E::invalid_data())?;
-        c.read_slice(len).map(|bytes| bytes.into())
+        c.read_slice(len)
+            .map(|bytes| bytes.into())
+            .ok_or_else(E::insufficient_bytes)
     }
 }
 
@@ -102,7 +104,7 @@ where
     }
 
     #[inline]
-    fn encoder(self, c: &mut Cursor<impl Bytes>) {
+    fn encoder(self, c: &mut impl Array<u8>) {
         let len: Len = unsafe { self.data.len().try_into().unwrap_unchecked() };
         len.encoder(c);
 

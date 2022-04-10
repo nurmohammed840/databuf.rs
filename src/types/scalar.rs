@@ -2,8 +2,8 @@ use crate::*;
 
 impl Encoder for bool {
     #[inline]
-    fn encoder(self, c: &mut Cursor<impl Bytes>) {
-        u8::encoder(self.into(), c);
+    fn encoder(self, c: &mut impl Array<u8>) {
+        c.push(self.into());
     }
 }
 impl<E: Error> Decoder<'_, E> for bool {
@@ -15,7 +15,7 @@ impl<E: Error> Decoder<'_, E> for bool {
 
 impl Encoder for char {
     #[inline]
-    fn encoder(self, c: &mut Cursor<impl Bytes>) {
+    fn encoder(self, c: &mut impl Array<u8>) {
         u32::encoder(self.into(), c);
     }
 }
@@ -29,21 +29,14 @@ impl<E: Error> Decoder<'_, E> for char {
 macro_rules! impl_data_type_for {
     [$($rty:ty)*] => ($(
         impl Encoder for $rty {
-            // const IS_DYNAMIC: bool = false;
             #[inline]
-            fn encoder(self, c: &mut Cursor<impl Bytes>) {
+            fn encoder(self, c: &mut impl Array<u8>) {
+                let len = c.len();
+                let total_len = len + size_of::<Self>();
+                c.ensure_capacity(total_len);
                 unsafe {
-                    let data = c.data.as_mut();
-                    let dst = data.as_mut_ptr().add(c.offset);
-
-                    let total_len = c.offset + size_of::<Self>();
-                    if total_len > c.data.as_ref().len() {
-                        c.data.reserve(size_of::<Self>());
-                        #[allow(clippy::uninit_vec)]
-                        c.data.set_len(total_len);
-                    }
-                    c.offset = total_len;
-                    write_num!(self, dst);
+                    write_num!(self, c.as_mut_ptr().add(len));
+                    c.set_len(total_len);
                 }
             }
         }

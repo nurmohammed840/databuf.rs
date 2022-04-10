@@ -10,9 +10,9 @@ macro_rules! impls {
                 Lencoder::SIZE + bytes.len()
             }
             #[inline]
-            fn encoder(self, view: &mut Cursor<impl Bytes>) {
+            fn encoder(self, view: &mut impl Array<u8>) {
                 Lencoder(self.len().try_into().unwrap()).encoder(view);
-                view.write_slice(self);
+                view.extend_from_slice(self);
             }
     })*};
 }
@@ -22,7 +22,7 @@ impl<'de, E: Error> Decoder<'de, E> for &'de [u8] {
     #[inline]
     fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
         let len = Lencoder::decoder(c)?.0;
-        c.read_slice(len as usize)
+        c.read_slice(len as usize).ok_or_else(E::insufficient_bytes)
     }
 }
 impl<'de, E: Error> Decoder<'de, E> for &'de str {
@@ -47,7 +47,7 @@ impl<T: Encoder> Encoder for Vec<T> {
     }
 
     #[inline]
-    fn encoder(self, c: &mut Cursor<impl Bytes>) {
+    fn encoder(self, c: &mut impl Array<u8>) {
         Lencoder(self.len().try_into().unwrap()).encoder(c);
         for item in self {
             item.encoder(c);
@@ -71,7 +71,7 @@ impl<'de, E: Error, T: Decoder<'de, E>> Decoder<'de, E> for Vec<T> {
 
 impl<T: Encoder> Encoder for Box<T> {
     const SIZE: usize = size_of::<T>();
-    fn encoder(self, c: &mut Cursor<impl Bytes>) {
+    fn encoder(self, c: &mut impl Array<u8>) {
         T::encoder(*self, c);
     }
 }

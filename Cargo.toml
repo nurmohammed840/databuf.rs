@@ -1,6 +1,6 @@
 [package]
 name = "bin-layout"
-version = "4.0.1"
+version = "5.0.0"
 edition = "2021"
 
 description = "This library used to serialize and deserialize data in binary format."
@@ -23,7 +23,9 @@ NE = []         # Native Endian
 L3 = []         # 22 bits
 
 [dependencies]
-bin-layout-derive = { path = "./bin_layout_derive", version = "0.2" }
+bin-layout-derive = { path = "./bin_layout_derive", version = "0.3" }
+util-cursor = "0.1"
+stack-array = "0.4"
 
 [workspace]
 members = ["bin_layout_derive"]

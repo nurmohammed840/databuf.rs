@@ -72,7 +72,7 @@ def!(
     L2(u16),
     LenSize: 2,
     MAX: 0x7FFF,
-    fn encoder(self, c: &mut Cursor<impl Bytes>) {
+    fn encoder(self, c: &mut impl Array<u8>) {
         let num = self.0;
         let b1 = num as u8;
         if num < 128 {
@@ -81,7 +81,7 @@ def!(
             debug_assert!(num <= Self::MAX);
             let b1 = 0x80 | b1; // 7 bits with MSB is set.
             let b2 = (num >> 7) as u8; // next 8 bits
-            c.write_slice([b1, b2]);
+            c.extend_from_slice([b1, b2]);
         }
     },
     fn decoder(c: &mut Cursor<&[u8]>) -> Result<Self, E> {
@@ -98,7 +98,7 @@ def!(
     L3(u32),
     LenSize: 3,
     MAX: 0x3FFFFF,
-    fn encoder(self, c: &mut Cursor<impl Bytes>) {
+    fn encoder(self, c: &mut impl Array<u8>) {
         let num = self.0;
         let b1 = num as u8;
         if num < 128 {
@@ -109,13 +109,13 @@ def!(
             let b2 = (num >> 6) as u8; // next 8 bits
             if num < 0x4000 {
                 // set first 2 bits  of `b1` to `10`
-                c.write_slice([0x80 | b1, b2]);
+                c.extend_from_slice([0x80 | b1, b2]);
             }
             else {
                 debug_assert!(num <= Self::MAX);
                 let b3 = (num >> 14) as u8; // next 8 bits
                 // set first 2 bits  of `b1` to `11`
-                c.write_slice([0xC0 | b1, b2, b3]);
+                c.extend_from_slice([0xC0 | b1, b2, b3]);
             }
         }
     },

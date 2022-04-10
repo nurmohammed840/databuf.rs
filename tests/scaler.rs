@@ -20,3 +20,5 @@ fn test_scaler_type_serialization() {
         assert_eq!(word, (u64::decode(word.encode().as_ref()) as Result<u64, ()>).unwrap());
     });
 }
+
+

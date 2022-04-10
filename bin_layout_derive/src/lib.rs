@@ -26,7 +26,7 @@ pub fn encoder(input: TokenStream) -> TokenStream {
         impl #mod_generics bin_layout::Encoder for #ident #ty_generics #where_clause {
             const SIZE: usize = #size;
             fn size_hint(&self) -> usize { #hint }
-            fn encoder(self, c: &mut bin_layout::Cursor<impl bin_layout::Bytes>) { #encoder }
+            fn encoder(self, c: &mut impl bin_layout::Array<u8>) { #encoder }
         }
     })
 }

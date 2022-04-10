@@ -73,7 +73,6 @@ There is no performance penalty for using this library. Or we can say there is z
 - Compile time allocation:
 
     What if the data is fixed size? Then we don't need to allocate any memory at runtime.
-    We could allocate a fixed size buffer at compile time!
 
     For example, The following structs, don't have any dynamic data. So we can have a fixed size buffer at compile time.
 
@@ -95,11 +94,9 @@ There is no performance penalty for using this library. Or we can say there is z
 
     let record = Record { id: 1, date: Date { year: 2018, month: 1, day: 1 }, value: [0; 512] };
 
-    let mut buf = [0; Record::SIZE]; // 520 bytes buffer.
-    let mut cursor = buf.as_mut().into();
-    record.encoder(&mut cursor);
-
-    assert_eq!(cursor.offset, Record::SIZE);
+    let mut arr: ArrayBuf<u8, {Record::SIZE}> = ArrayBuf::new(); // 520 bytes uninitialized memory
+    record.encoder(&mut arr);
+    assert_eq!(arr.len(), Record::SIZE);
     ```
 
     What happens if we have a dynamic data (like vector, string, etc...) ? Then we have to allocate memory at runtime.
@@ -140,7 +137,7 @@ struct Bar(u16);
 struct Foo { x: u8, y: Bar }
 
 impl Encoder for Foo {
-    fn encoder(self, c: &mut Cursor<impl Bytes>) {
+    fn encoder(self, c: &mut impl Array<u8>) {
         self.x.encoder(c);
         self.y.encoder(c);
     }

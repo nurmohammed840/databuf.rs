@@ -16,7 +16,7 @@ impl<'a> Encoder for Subject<'a> {
             _ => 2,
         }
     }
-    fn encoder(self, view: &mut Cursor<impl Bytes>) {
+    fn encoder(self, view: &mut impl Array<u8>) {
         let code: u16 = match self {
             Math => 302,
             Physics => 317,

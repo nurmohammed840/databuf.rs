@@ -1,10 +1,6 @@
 #![doc = include_str!("../README.md")]
 #![cfg_attr(feature = "nightly", feature(array_try_map))]
-#![cfg_attr(feature = "auto_traits", feature(auto_traits))]
-#![cfg_attr(feature = "auto_traits", feature(negative_impls))]
 
-mod bytes;
-mod cursor;
 mod error;
 pub mod lencoder;
 mod record;
@@ -14,12 +10,10 @@ use core::convert::TryInto;
 use core::mem::{size_of, MaybeUninit};
 use core::{fmt, ptr};
 
-#[cfg(feature = "auto_traits")]
-pub use auto_traits::*;
 pub use bin_layout_derive::*;
-pub use bytes::*;
-pub use cursor::*;
 pub use error::*;
+pub use stack_array::*;
+pub use util_cursor::Cursor;
 pub use lencoder::Lencoder;
 pub use record::*;
 
@@ -28,7 +22,7 @@ pub trait Encoder: Sized {
     const SIZE: usize = size_of::<Self>();
 
     /// Serialize the data to binary format.
-    fn encoder(self, _: &mut Cursor<impl Bytes>);
+    fn encoder(self, _: &mut impl Array<u8>);
 
     /// Calculate total estimated size of the data structure in bytes.
     #[inline]
@@ -52,8 +46,7 @@ pub trait Encoder: Sized {
     #[inline]
     fn encode(self) -> Vec<u8> {
         let mut vec = Vec::with_capacity(self.size_hint());
-        let mut cursor = Cursor::new(&mut vec);
-        self.encoder(&mut cursor);
+        self.encoder(&mut vec);
         vec
     }
 }
@@ -80,14 +73,4 @@ pub trait Decoder<'de, E>: Sized {
     fn decode(data: &'de [u8]) -> Result<Self, E> {
         Self::decoder(&mut Cursor::from(data))
     }
-}
-
-#[cfg(feature = "auto_traits")]
-mod auto_traits {
-    pub unsafe auto trait StaticSized {}
-
-    impl !StaticSized for &str {}
-    impl !StaticSized for String {}
-    impl<T> !StaticSized for &[T] {}
-    impl<T> !StaticSized for Vec<T> {}
 }

@@ -64,3 +64,39 @@ impl Error for () {
     #[inline]
     fn invalid_data() -> Self {}
 }
+
+// =======================================================================
+
+impl Error for std::io::ErrorKind {
+    fn insufficient_bytes() -> Self {
+        Self::OutOfMemory
+    }
+
+    fn invalid_data() -> Self {
+        Self::InvalidData
+    }
+}
+
+impl Error for std::io::Error {
+    fn insufficient_bytes() -> Self {
+        Self::new(std::io::ErrorKind::OutOfMemory, "insufficient bytes")
+    }
+
+    fn invalid_data() -> Self {
+        Self::new(std::io::ErrorKind::InvalidData, "invalid data")
+    }
+
+    fn utf8_err(err: Utf8Error) -> Self {
+        Self::new(
+            std::io::ErrorKind::InvalidData,
+            format!("invalid data (utf8), {err:?}"),
+        )
+    }
+    
+    fn from_utf8_err(err: FromUtf8Error) -> Self {
+        Self::new(
+            std::io::ErrorKind::InvalidData,
+            format!("invalid data (utf8), {err:?}"),
+        )
+    }
+}

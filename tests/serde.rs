@@ -1,4 +1,5 @@
 use bin_layout::*;
+use stack_array::ArrayBuf;
 
 #[derive(Encoder, Decoder, PartialEq, Clone, Debug)]
 struct ABC<'a> {

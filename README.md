@@ -78,6 +78,7 @@ There is no performance penalty for using this library. Or we can say there is z
 
     ```rust
     use bin_layout::*;
+    use stack_array::ArrayBuf;
 
     #[derive(Encoder, Decoder)]
     struct Date {

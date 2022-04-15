@@ -12,10 +12,11 @@ use core::{fmt, ptr};
 
 pub use bin_layout_derive::*;
 pub use error::*;
-pub use stack_array::*;
-pub use util_cursor::Cursor;
 pub use lencoder::Lencoder;
 pub use record::*;
+pub use stack_array;
+pub use stack_array::Array;
+pub use util_cursor::Cursor;
 
 pub trait Encoder: Sized {
     /// The size of the data type in bytes. (padding not included)

@@ -21,7 +21,5 @@ fn serde_test() {
     abc.clone().encoder(&mut arr);
 
     assert_eq!(arr.len(), 22);
-
-    let new_abc: Result<_, ErrorKind> = ABC::decode(&arr);
-    assert_eq!(new_abc.unwrap(), abc);
+    assert_eq!(ABC::decode(&arr).unwrap(), abc);
 }

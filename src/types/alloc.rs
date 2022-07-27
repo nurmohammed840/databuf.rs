@@ -10,33 +10,34 @@ macro_rules! impls {
                 Lencoder::SIZE + bytes.len()
             }
             #[inline]
-            fn encoder(self, view: &mut impl Array<u8>) {
-                Lencoder(self.len().try_into().unwrap()).encoder(view);
-                view.extend_from_slice(self);
+            fn encoder(&self, c: &mut impl Array<u8>) {
+                let len = self.len().try_into().expect("Invalid length type");
+                Lencoder(len).encoder(c);
+                c.extend_from_slice(self);
             }
     })*};
 }
 impls!(Encoder for &[u8], &str, String);
 
-impl<'de, E: Error> Decoder<'de, E> for &'de [u8] {
+impl<'de> Decoder<'de> for &'de [u8] {
     #[inline]
-    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
+    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, &'static str> {
         let len = Lencoder::decoder(c)?.0;
-        c.read_slice(len as usize).ok_or_else(E::insufficient_bytes)
+        c.read_slice(len as usize).ok_or("Insufficient bytes")
     }
 }
-impl<'de, E: Error> Decoder<'de, E> for &'de str {
+impl<'de> Decoder<'de> for &'de str {
     #[inline]
-    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
-        let bytes: &'de [u8] = Decoder::decoder(c)?;
-        core::str::from_utf8(bytes).map_err(E::utf8_err)
+    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, &'static str> {
+        let bytes = Decoder::decoder(c)?;
+        core::str::from_utf8(bytes).map_err(|_| "Invalid UTF-8 slice")
     }
 }
-impl<E: Error> Decoder<'_, E> for String {
+impl Decoder<'_> for String {
     #[inline]
-    fn decoder(c: &mut Cursor<&[u8]>) -> Result<Self, E> {
+    fn decoder(c: &mut Cursor<&[u8]>) -> Result<Self, &'static str> {
         let bytes: &[u8] = Decoder::decoder(c)?;
-        String::from_utf8(bytes.to_vec()).map_err(E::from_utf8_err)
+        String::from_utf8(bytes.to_vec()).map_err(|_| "Invalid UTF-8 string")
     }
 }
 
@@ -47,17 +48,19 @@ impl<T: Encoder> Encoder for Vec<T> {
     }
 
     #[inline]
-    fn encoder(self, c: &mut impl Array<u8>) {
-        Lencoder(self.len().try_into().unwrap()).encoder(c);
+    fn encoder(&self, c: &mut impl Array<u8>) {
+        let len = self.len().try_into().expect("Invalid length type");
+        Lencoder(len).encoder(c);
+        
         for item in self {
             item.encoder(c);
         }
     }
 }
 
-impl<'de, E: Error, T: Decoder<'de, E>> Decoder<'de, E> for Vec<T> {
+impl<'de, T: Decoder<'de>> Decoder<'de> for Vec<T> {
     #[inline]
-    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
+    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, &'static str> {
         let len = Lencoder::decoder(c)?.0;
         let mut vec = Vec::with_capacity(len as usize);
         for _ in 0..len {
@@ -71,16 +74,13 @@ impl<'de, E: Error, T: Decoder<'de, E>> Decoder<'de, E> for Vec<T> {
 
 impl<T: Encoder> Encoder for Box<T> {
     const SIZE: usize = size_of::<T>();
-    fn encoder(self, c: &mut impl Array<u8>) {
-        T::encoder(*self, c);
+    fn encoder(&self, c: &mut impl Array<u8>) {
+        T::encoder(self, c);
     }
 }
 
-impl<'de, T, E> Decoder<'de, E> for Box<T>
-where
-    T: Decoder<'de, E>,
-{
-    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
+impl<'de, T: Decoder<'de>> Decoder<'de> for Box<T> {
+    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, &'static str> {
         Ok(Box::new(T::decoder(c)?))
     }
 }

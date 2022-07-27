@@ -20,13 +20,13 @@ pub fn encoder(input: TokenStream) -> TokenStream {
 
     let mod_generics = encoder_trait_bounds(generics.clone());
     let (_, ty_generics, where_clause) = generics.split_for_impl();
-    let (size, hint, encoder) = encoder_methods(data);
+    let (size, hint, encoder) = encoder_method(data);
 
     TokenStream::from(quote! {
         impl #mod_generics bin_layout::Encoder for #ident #ty_generics #where_clause {
             const SIZE: usize = #size;
             fn size_hint(&self) -> usize { #hint }
-            fn encoder(self, c: &mut impl bin_layout::Array<u8>) { #encoder }
+            fn encoder(&self, c: &mut impl bin_layout::Array<u8>) { #encoder }
         }
     })
 }
@@ -39,7 +39,7 @@ fn encoder_trait_bounds(mut generics: Generics) -> Generics {
     }
     generics
 }
-fn encoder_methods(data: Data) -> (TokenS, TokenS, TokenS) {
+fn encoder_method(data: Data) -> (TokenS, TokenS, TokenS) {
     let mut size = String::from('0');
     let mut hint = String::from("use bin_layout::Encoder as S; 0");
     let mut encoder = String::from("use bin_layout::Encoder as S;");
@@ -81,7 +81,7 @@ fn write_hint<T: std::fmt::Display>(s: &mut String, ident: T) {
     s.push(')');
 }
 fn write_encoder<T: std::fmt::Display>(s: &mut String, ident: T) {
-    s.push_str("S::encoder(self.");
+    s.push_str("S::encoder(&self.");
     s.push_str(&ident.to_string());
     s.push_str(",c);");
 }
@@ -102,10 +102,10 @@ pub fn decoder(input: TokenStream) -> TokenStream {
     let decoder = decoder_method(data);
 
     TokenStream::from(quote! {
-        impl <#lt, #ig> bin_layout::Decoder<'de, Error> for #ident #ty_generics
+        impl <#lt, #ig> bin_layout::Decoder<'de> for #ident #ty_generics
         #where_clause
         {
-            fn decoder(c: &mut bin_layout::Cursor<&'de [u8]>) -> core::result::Result<Self, Error> {
+            fn decoder(c: &mut bin_layout::Cursor<&'de [u8]>) -> core::result::Result<Self, &'static str> {
                 #decoder
             }
         }
@@ -146,24 +146,11 @@ fn decoder_trait_bounds(g: &Generics) -> (LifetimeDef, Punctuated<GenericParam, 
         match param {
             GenericParam::Type(ty) => ty
                 .bounds
-                .push(parse_quote!(bin_layout::Decoder<'de, Error>)),
+                .push(parse_quote!(bin_layout::Decoder<'de>)),
 
             GenericParam::Lifetime(lt) => de_lifetime.bounds.push(lt.lifetime.clone()),
             _ => {}
         }
     }
-    let i = params
-        .iter()
-        .enumerate()
-        .find_map(|(i, g)| {
-            matches!(g, GenericParam::Type(..) | GenericParam::Const(..)).then(|| i)
-        })
-        .unwrap_or(params.len());
-
-    params.insert(
-        i,
-        GenericParam::Type(parse_quote!(Error: bin_layout::Error)),
-    );
-
     (de_lifetime, params)
 }

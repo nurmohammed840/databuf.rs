@@ -45,7 +45,6 @@ pub use L2 as Lencoder;
 #[cfg(feature = "L3")]
 pub use L3 as Lencoder;
 
-
 macro_rules! def {
     [$name:ident($ty:ty), LenSize: $size:literal, MAX: $MAX:literal, $encoder:item, $decoder:item] => {
         #[derive(Default, Debug, Clone, Copy)]
@@ -56,7 +55,7 @@ macro_rules! def {
             const SIZE: usize = $size;
             #[inline] $encoder
         }
-        impl<E: Error> Decoder<'_, E> for $name { #[inline] $decoder }
+        impl Decoder<'_> for $name { #[inline] $decoder }
         impl From<$ty> for $name { fn from(num: $ty) -> Self { Self(num) } }
         impl core::ops::Deref for $name {
             type Target = $ty;
@@ -66,13 +65,13 @@ macro_rules! def {
             fn deref_mut(&mut self) -> &mut Self::Target { &mut self.0 }
         }
     };
-}   
+}
 
 def!(
     L2(u16),
     LenSize: 2,
     MAX: 0x7FFF,
-    fn encoder(self, c: &mut impl Array<u8>) {
+    fn encoder(&self, c: &mut impl Array<u8>) {
         let num = self.0;
         let b1 = num as u8;
         if num < 128 {
@@ -84,7 +83,7 @@ def!(
             c.extend_from_slice([b1, b2]);
         }
     },
-    fn decoder(c: &mut Cursor<&[u8]>) -> Result<Self, E> {
+    fn decoder(c: &mut Cursor<&[u8]>) -> Result<Self, &'static str> {
         let mut num = u8::decoder(c)? as u16;
         // if MSB is set, read another byte.
         if num >> 7 == 1 {
@@ -98,7 +97,7 @@ def!(
     L3(u32),
     LenSize: 3,
     MAX: 0x3FFFFF,
-    fn encoder(self, c: &mut impl Array<u8>) {
+    fn encoder(&self, c: &mut impl Array<u8>) {
         let num = self.0;
         let b1 = num as u8;
         if num < 128 {
@@ -119,7 +118,7 @@ def!(
             }
         }
     },
-    fn decoder(c: &mut Cursor<& [u8]>) -> Result<Self, E> {
+    fn decoder(c: &mut Cursor<& [u8]>) -> Result<Self, &'static str> {
         let num = u8::decoder(c)? as u32;
         // if 1st bit is `0`
         let num = if num >> 7 == 0 { num }
@@ -129,8 +128,9 @@ def!(
             (num & 0x3F) | b2 << 6
         } else  {
             // At this point, only possible first 2 bits are `11`
-            let b2 = *c.data.get(c.offset).ok_or_else(E::insufficient_bytes)? as u32;
-            let b3 = *c.data.get(c.offset + 1).ok_or_else(E::insufficient_bytes)? as u32;
+            let b2 = *c.data.get(c.offset).ok_or("Insufficient bytes")? as u32;
+            let b3 = *c.data.get(c.offset + 1).ok_or("Insufficient bytes")? as u32;
+
             c.offset += 2;
 
             (num & 0x3F)  // get last 6 bits
@@ -140,3 +140,21 @@ def!(
         Ok(Self(num))
     }
 );
+
+// -------------------------------------------------------------------------------
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_lencoder() -> Result<(), &'static str> {
+        for num in 0..=L2::MAX {
+            assert_eq!(num, L2::decode(&L2(num).encode())?.0);
+        }
+        for num in 0..=(L3::MAX / 4) {
+            assert_eq!(num, L3::decode(&L3(num).encode())?.0);
+        }
+        Ok(())
+    }
+}

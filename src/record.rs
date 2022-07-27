@@ -4,12 +4,12 @@ use core::{
     ops::{Deref, DerefMut},
 };
 
-pub trait FixedLenInt: TryFrom<usize> {}
-impl FixedLenInt for u8 {}
-impl FixedLenInt for u16 {}
-impl FixedLenInt for u32 {}
-impl FixedLenInt for u64 {}
-impl FixedLenInt for usize {}
+pub trait Len: TryFrom<usize> + Encoder + for<'de> Decoder<'de> {}
+impl Len for u8 {}
+impl Len for u16 {}
+impl Len for u32 {}
+impl Len for u64 {}
+impl Len for usize {}
 
 /// `Record` can be used to represent fixed-size integer to represent the length of a record.
 ///
@@ -26,113 +26,118 @@ impl FixedLenInt for usize {}
 /// assert_eq!(bytes.len(), 11);
 /// ```
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Record<Len: FixedLenInt, T> {
+pub struct Record<L: Len, T> {
     pub data: T,
-    _marker: PhantomData<Len>,
+    _marker: PhantomData<L>,
 }
 
 // ---------------------------------------------------------------------------------
 
 macro_rules! impls {
     [Encoder for $($ty:ty),*] => {$(
-        impl<Len: Encoder + FixedLenInt> Encoder for Record<Len, $ty> {
+        impl<L: Len> Encoder for Record<L, $ty>
+        where
+            L::Error: fmt::Debug,
+        {
             #[inline]
             fn size_hint(&self) -> usize {
                 let bytes: &[u8] = self.as_ref();
-                Len::SIZE + bytes.len()
+                L::SIZE + bytes.len()
             }
             #[inline]
-            fn encoder(self, c: &mut impl Array<u8>) {
-                let len: Len = unsafe { self.data.len().try_into().unwrap_unchecked() };
+            fn encoder(&self, c: &mut impl Array<u8>) {
+                let len: L = self.data.len().try_into().expect("Invalid length type") ;
                 len.encoder(c);
-                c.extend_from_slice(self.data);
+                c.extend_from_slice(&self.data);
             }
         }
     )*};
 }
 impls!(Encoder for &[u8], &str, String);
 
-impl<'de, E: Error, Len> Decoder<'de, E> for Record<Len, &'de [u8]>
+impl<'de, L: Len> Decoder<'de> for Record<L, &'de [u8]>
 where
-    usize: TryFrom<Len>,
-    Len: FixedLenInt + Decoder<'de, E>,
+    usize: TryFrom<L>,
 {
-    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
-        let len: usize = Len::decoder(c)?.try_into().map_err(|_| E::invalid_data())?;
+    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, &'static str> {
+        let len: usize = L::decoder(c)?
+            .try_into()
+            .map_err(|_| "Invalid length type")?;
+
         c.read_slice(len)
-            .map(|bytes| bytes.into())
-            .ok_or_else(E::insufficient_bytes)
+            .map(Record::new)
+            .ok_or("Insufficient bytes")
     }
 }
 
-impl<'de, E: Error, Len> Decoder<'de, E> for Record<Len, &'de str>
+impl<'de, L: Len> Decoder<'de> for Record<L, &'de str>
 where
-    usize: TryFrom<Len>,
-    Len: FixedLenInt + Decoder<'de, E>,
+    usize: TryFrom<L>,
 {
-    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
-        let bytes: Record<Len, &'de [u8]> = Record::decoder(c)?;
+    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, &'static str> {
+        let bytes: Record<L, &[u8]> = Record::decoder(c)?;
 
         core::str::from_utf8(bytes.data)
-            .map(|string| string.into())
-            .map_err(E::utf8_err)
+            .map_err(|_| "Invalid UTF-8 slice")
+            .map(Record::new)
     }
 }
 
-impl<'de, E: Error, Len> Decoder<'de, E> for Record<Len, String>
+impl<L: Len> Decoder<'_> for Record<L, String>
 where
-    usize: TryFrom<Len>,
-    Len: FixedLenInt + Decoder<'de, E>,
+    usize: TryFrom<L>,
 {
-    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
-        let bytes: Record<Len, &'de [u8]> = Record::decoder(c)?;
+    fn decoder(c: &mut Cursor<&[u8]>) -> Result<Self, &'static str> {
+        let bytes: Record<L, &[u8]> = Record::decoder(c)?;
 
         String::from_utf8(bytes.to_vec())
-            .map(|string| string.into())
-            .map_err(E::from_utf8_err)
+            .map_err(|_| "Invalid UTF-8 string")
+            .map(Record::new)
     }
 }
 
-impl<Len, T> Encoder for Record<Len, Vec<T>>
+impl<L, T> Encoder for Record<L, Vec<T>>
 where
+    L: Len,
+    L::Error: fmt::Debug,
     T: Encoder,
-    Len: Encoder + FixedLenInt,
 {
     #[inline]
     fn size_hint(&self) -> usize {
-        Len::SIZE + self.iter().map(T::size_hint).sum::<usize>()
+        L::SIZE + self.iter().map(T::size_hint).sum::<usize>()
     }
 
     #[inline]
-    fn encoder(self, c: &mut impl Array<u8>) {
-        let len: Len = unsafe { self.data.len().try_into().unwrap_unchecked() };
+    fn encoder(&self, c: &mut impl Array<u8>) {
+        let len: L = self.data.len().try_into().expect("Invalid length type");
         len.encoder(c);
 
-        for record in self.data {
+        for record in &self.data {
             record.encoder(c);
         }
     }
 }
 
-impl<'de, E: Error, Len, T> Decoder<'de, E> for Record<Len, Vec<T>>
+impl<'de, L: Len, T> Decoder<'de> for Record<L, Vec<T>>
 where
-    T: Decoder<'de, E>,
-    usize: TryFrom<Len>,
-    Len: Decoder<'de, E> + FixedLenInt,
+    T: Decoder<'de>,
+    usize: TryFrom<L>,
 {
     #[inline]
-    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
-        let len: usize = Len::decoder(c)?.try_into().map_err(|_| E::invalid_data())?;
+    fn decoder(c: &mut Cursor<&'de [u8]>) -> Result<Self, &'static str> {
+        let len: usize = L::decoder(c)?
+            .try_into()
+            .map_err(|_| "Invalid length type")?;
 
-        let mut vec = Vec::with_capacity(len as usize);
+        let mut vec = Vec::with_capacity(len);
         for _ in 0..len {
             vec.push(T::decoder(c)?);
         }
-        Ok(vec.into())
+        Ok(Record::new(vec))
     }
 }
 
-impl<N: FixedLenInt, T> Record<N, T> {
+impl<L: Len, T> Record<L, T> {
     #[inline]
     pub fn new(data: T) -> Self {
         Self {
@@ -141,26 +146,23 @@ impl<N: FixedLenInt, T> Record<N, T> {
         }
     }
 }
-impl<N: FixedLenInt, T: fmt::Debug> fmt::Debug for Record<N, T> {
+impl<L: Len, T: fmt::Debug> fmt::Debug for Record<L, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.data.fmt(f)
     }
 }
-impl<N: FixedLenInt, T> From<T> for Record<N, T> {
-    #[inline]
+impl<L: Len, T> From<T> for Record<L, T> {
     fn from(data: T) -> Self {
         Self::new(data)
     }
 }
-impl<N: FixedLenInt, T> Deref for Record<N, T> {
+impl<L: Len, T> Deref for Record<L, T> {
     type Target = T;
-    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.data
     }
 }
-impl<N: FixedLenInt, T> DerefMut for Record<N, T> {
-    #[inline]
+impl<L: Len, T> DerefMut for Record<L, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.data
     }

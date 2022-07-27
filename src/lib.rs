@@ -1,7 +1,6 @@
 #![doc = include_str!("../README.md")]
 #![cfg_attr(feature = "nightly", feature(array_try_map))]
 
-mod error;
 pub mod lencoder;
 mod record;
 mod types;
@@ -11,7 +10,6 @@ use core::mem::{size_of, MaybeUninit};
 use core::{fmt, ptr};
 
 pub use bin_layout_derive::*;
-pub use error::*;
 pub use lencoder::Lencoder;
 pub use record::*;
 pub use stack_array;
@@ -23,7 +21,7 @@ pub trait Encoder: Sized {
     const SIZE: usize = size_of::<Self>();
 
     /// Serialize the data to binary format.
-    fn encoder(self, _: &mut impl Array<u8>);
+    fn encoder(&self, _: &mut impl Array<u8>);
 
     /// Calculate total estimated size of the data structure in bytes.
     #[inline]
@@ -42,19 +40,19 @@ pub trait Encoder: Sized {
     ///     bar: [u8; 2],
     /// }
     /// let foobar = FooBar { foo: 1, bar: [2, 3] }.encode();
-    /// assert_eq!(vec![1, 2, 3], foobar);
+    /// assert_eq!(foobar, vec![1, 2, 3]);
     /// ```
     #[inline]
-    fn encode(self) -> Vec<u8> {
+    fn encode(&self) -> Vec<u8> {
         let mut vec = Vec::with_capacity(self.size_hint());
         self.encoder(&mut vec);
         vec
     }
 }
 
-pub trait Decoder<'de, E>: Sized {
+pub trait Decoder<'de>: Sized {
     /// Deserialize the data from binary format.
-    fn decoder(_: &mut Cursor<&'de [u8]>) -> Result<Self, E>;
+    fn decoder(_: &mut Cursor<&'de [u8]>) -> Result<Self, &'static str>;
 
     /// ### Example
     ///
@@ -67,11 +65,11 @@ pub trait Decoder<'de, E>: Sized {
     ///     bar: [u8; 2],
     /// }
     ///
-    /// let foobar: Result<FooBar, ()> = FooBar::decode(&[1, 2, 3]);
-    /// assert_eq!(foobar, Ok(FooBar { foo: 1, bar: [2, 3] }));
+    /// let foobar = FooBar::decode(&[1, 2, 3]).unwrap();
+    /// assert_eq!(foobar, FooBar { foo: 1, bar: [2, 3] });
     /// ```
     #[inline]
-    fn decode(data: &'de [u8]) -> Result<Self, E> {
+    fn decode(data: &'de [u8]) -> Result<Self, &'static str> {
         Self::decoder(&mut Cursor::from(data))
     }
 }

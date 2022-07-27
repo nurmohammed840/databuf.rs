@@ -16,7 +16,7 @@ impl<'a> Encoder for Subject<'a> {
             _ => 2,
         }
     }
-    fn encoder(self, view: &mut impl Array<u8>) {
+    fn encoder(&self, view: &mut impl Array<u8>) {
         let code: u16 = match self {
             Math => 302,
             Physics => 317,
@@ -29,8 +29,8 @@ impl<'a> Encoder for Subject<'a> {
         code.encoder(view)
     }
 }
-impl<'de, E: Error> Decoder<'de, E> for Subject<'de> {
-    fn decoder(view: &mut Cursor<&'de [u8]>) -> Result<Self, E> {
+impl<'de> Decoder<'de> for Subject<'de> {
+    fn decoder(view: &mut Cursor<&'de [u8]>) -> Result<Self, &'static str> {
         let name = match u16::decoder(view)? {
             302 => Math,
             317 => Physics,
@@ -58,7 +58,7 @@ struct Class<'a> {
 }
 
 #[test]
-fn basic() -> Result<(), ()> {
+fn basic() -> Result<(), &'static str> {
     let old_class = Class {
         name: "Mango",
         subjects: [Physics, Chemistry, Other(321, "Engish II".into()), Math],

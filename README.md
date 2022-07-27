@@ -11,7 +11,7 @@ If you want to use big endian, you can set `BE` features flag. And for native en
 
 ```toml
 [dependencies]
-bin-layout = { version = "4", features = ["BE"] }
+bin-layout = { version = "6", features = ["BE"] }
 ```
 
 ### Example
@@ -20,14 +20,14 @@ bin-layout = { version = "4", features = ["BE"] }
 use bin_layout::*;
 
 #[derive(Encoder, Decoder)]
-struct Car<'a> {
-    name: &'a str,  // Zero-Copy deserialization
+struct Car {
+    name: &'static str,
     year: u16,
     is_new: bool,
 }
 
 #[derive(Encoder, Decoder)]
-struct Company<'a> { name: String, cars: Vec<Car<'a>> }
+struct Company { name: String, cars: Vec<Car> }
 
 let old = Company {
     name: "Tesla".into(),
@@ -38,7 +38,7 @@ let old = Company {
 };
 
 let bytes = old.encode();
-let new: Result<_, ()> = Company::decode(&bytes);
+let new = Company::decode(&bytes);
 ```
 
 There is two main reasons for this library to exists. 
@@ -63,9 +63,7 @@ There is no performance penalty for using this library. Or we can say there is z
     //           ^^  ^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
     //           Id  Len                         Data
 
-    let out: Result<Msg, ErrorKind> = Msg::decode(&bytes);
-    let msg = out.unwrap();
-
+    let msg = Msg::decode(&bytes).unwrap();
     assert_eq!(msg.id, 42);
     assert_eq!(msg.data, "Hello, World!"); // Here, data is referenced.
     ```
@@ -143,8 +141,8 @@ impl Encoder for Foo {
         self.y.encoder(c);
     }
 }
-impl<E: Error> Decoder<'_, E> for Foo {
-    fn decoder(c: &mut Cursor<&[u8]>) -> Result<Self, E> {
+impl Decoder<'_> for Foo {
+    fn decoder(c: &mut Cursor<&[u8]>) -> Result<Self, &'static str> {
         Ok(Self {
             x: u8::decoder(c)?,
             y: Bar::decoder(c)?,
@@ -152,10 +150,6 @@ impl<E: Error> Decoder<'_, E> for Foo {
     }
 }
 ```
-
-Note: `E: Error` is required for `Decoder` trait. Because This library allow user to define your own error type. `Error` trait allow you to map internal error to your own error type.
-
-Tips: If you don't want to use custom error type, you can use `Result<_, ()>`, Or use `bin_layout::ErrorKind` directly from this crate.
 
 ### Encoder, Decoder
 

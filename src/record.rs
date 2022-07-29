@@ -4,12 +4,12 @@ use core::{
     ops::{Deref, DerefMut},
 };
 
-pub trait Len: TryFrom<usize> + Encoder + for<'de> Decoder<'de> {}
-impl Len for u8 {}
-impl Len for u16 {}
-impl Len for u32 {}
-impl Len for u64 {}
-impl Len for usize {}
+pub trait LenType: TryFrom<usize> + Encoder + for<'de> Decoder<'de> {}
+impl LenType for u8 {}
+impl LenType for u16 {}
+impl LenType for u32 {}
+impl LenType for u64 {}
+impl LenType for usize {}
 
 /// `Record` can be used to represent fixed-size integer to represent the length of a record.
 ///
@@ -26,7 +26,7 @@ impl Len for usize {}
 /// assert_eq!(bytes.len(), 11);
 /// ```
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
-pub struct Record<L: Len, T> {
+pub struct Record<L: LenType, T> {
     pub data: T,
     _marker: PhantomData<L>,
 }
@@ -35,7 +35,7 @@ pub struct Record<L: Len, T> {
 
 macro_rules! impls {
     [Encoder for $($ty:ty),*] => {$(
-        impl<L: Len> Encoder for Record<L, $ty>
+        impl<L: LenType> Encoder for Record<L, $ty>
         where
             L::Error: fmt::Debug,
         {
@@ -55,7 +55,7 @@ macro_rules! impls {
 }
 impls!(Encoder for &[u8], &str, String);
 
-impl<'de, L: Len> Decoder<'de> for Record<L, &'de [u8]>
+impl<'de, L: LenType> Decoder<'de> for Record<L, &'de [u8]>
 where
     usize: TryFrom<L>,
 {
@@ -70,7 +70,7 @@ where
     }
 }
 
-impl<'de, L: Len> Decoder<'de> for Record<L, &'de str>
+impl<'de, L: LenType> Decoder<'de> for Record<L, &'de str>
 where
     usize: TryFrom<L>,
 {
@@ -83,7 +83,7 @@ where
     }
 }
 
-impl<L: Len> Decoder<'_> for Record<L, String>
+impl<L: LenType> Decoder<'_> for Record<L, String>
 where
     usize: TryFrom<L>,
 {
@@ -98,7 +98,7 @@ where
 
 impl<L, T> Encoder for Record<L, Vec<T>>
 where
-    L: Len,
+    L: LenType,
     L::Error: fmt::Debug,
     T: Encoder,
 {
@@ -118,7 +118,7 @@ where
     }
 }
 
-impl<'de, L: Len, T> Decoder<'de> for Record<L, Vec<T>>
+impl<'de, L: LenType, T> Decoder<'de> for Record<L, Vec<T>>
 where
     T: Decoder<'de>,
     usize: TryFrom<L>,
@@ -137,7 +137,7 @@ where
     }
 }
 
-impl<L: Len, T> Record<L, T> {
+impl<L: LenType, T> Record<L, T> {
     #[inline]
     pub fn new(data: T) -> Self {
         Self {
@@ -146,23 +146,23 @@ impl<L: Len, T> Record<L, T> {
         }
     }
 }
-impl<L: Len, T: fmt::Debug> fmt::Debug for Record<L, T> {
+impl<L: LenType, T: fmt::Debug> fmt::Debug for Record<L, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.data.fmt(f)
     }
 }
-impl<L: Len, T> From<T> for Record<L, T> {
+impl<L: LenType, T> From<T> for Record<L, T> {
     fn from(data: T) -> Self {
         Self::new(data)
     }
 }
-impl<L: Len, T> Deref for Record<L, T> {
+impl<L: LenType, T> Deref for Record<L, T> {
     type Target = T;
     fn deref(&self) -> &Self::Target {
         &self.data
     }
 }
-impl<L: Len, T> DerefMut for Record<L, T> {
+impl<L: LenType, T> DerefMut for Record<L, T> {
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.data
     }

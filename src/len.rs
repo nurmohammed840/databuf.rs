@@ -41,9 +41,9 @@
 use crate::*;
 
 #[cfg(not(feature = "L3"))]
-pub use L2 as Lencoder;
+pub use L2 as Len;
 #[cfg(feature = "L3")]
-pub use L3 as Lencoder;
+pub use L3 as Len;
 
 macro_rules! def {
     [$name:ident($ty:ty), LenSize: $size:literal, MAX: $MAX:literal, $encoder:item, $decoder:item] => {
@@ -148,7 +148,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn test_lencoder() -> Result<(), &'static str> {
+    fn test_len() -> Result<(), &'static str> {
         for num in 0..=L2::MAX {
             assert_eq!(num, L2::decode(&L2(num).encode())?.0);
         }

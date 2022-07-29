@@ -20,14 +20,14 @@ bin-layout = { version = "6", features = ["BE"] }
 use bin_layout::*;
 
 #[derive(Encoder, Decoder)]
-struct Car {
-    name: &'static str,
+struct Car<'a> {
+    name: &'a str,
     year: u16,
     is_new: bool,
 }
 
 #[derive(Encoder, Decoder)]
-struct Company { name: String, cars: Vec<Car> }
+struct Company<'a> { name: String, cars: Vec<Car<'a>> }
 
 let old = Company {
     name: "Tesla".into(),
@@ -45,11 +45,9 @@ There is two main reasons for this library to exists.
 
 ### 1. 🚀 Performance 🚀  
 
-There is no performance penalty for using this library. Or we can say there is zero-cost.
+There is no performance penalty for using this library.
 
-- Zero-copy deserialization:
-    Its mean that no data is copied. Instead, the data is referenced.
-    Which is only possible (safely) in rust, Other languages have to use unsafe operations.
+- Zero-copy deserialization: Its mean that no data is copied. Instead, the data is referenced.
     
     ```rust
     use bin_layout::*;
@@ -136,7 +134,7 @@ struct Bar(u16);
 struct Foo { x: u8, y: Bar }
 
 impl Encoder for Foo {
-    fn encoder(self, c: &mut impl Array<u8>) {
+    fn encoder(&self, c: &mut impl Array<u8>) {
         self.x.encoder(c);
         self.y.encoder(c);
     }

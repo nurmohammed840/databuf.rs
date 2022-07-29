@@ -1,7 +1,7 @@
 #![doc = include_str!("../README.md")]
 #![cfg_attr(feature = "nightly", feature(array_try_map))]
 
-pub mod lencoder;
+pub mod len;
 mod record;
 mod types;
 
@@ -10,7 +10,7 @@ use core::mem::{size_of, MaybeUninit};
 use core::{fmt, ptr};
 
 pub use bin_layout_derive::*;
-pub use lencoder::Lencoder;
+pub use len::Len;
 pub use record::*;
 pub use stack_array;
 pub use stack_array::Array;

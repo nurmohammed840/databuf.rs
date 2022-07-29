@@ -11,7 +11,7 @@ If you want to use big endian, you can set `BE` features flag. And for native en
 
 ```toml
 [dependencies]
-bin-layout = { version = "6", features = ["BE"] }
+bin-layout = { version = "5", features = ["BE"] }
 ```
 
 ### Example

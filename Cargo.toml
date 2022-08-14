@@ -24,8 +24,6 @@ L3 = []         # 22 bits
 
 [dependencies]
 bin-layout-derive = { path = "./bin_layout_derive", version = "0.4" }
-util-cursor = "0.1"
-stack-array = "0.4"
 
 [workspace]
 members = ["bin_layout_derive"]

@@ -39,13 +39,11 @@ macro_rules! impls {
         where
             L::Error: fmt::Debug,
         {
-            #[inline]
-            fn size_hint(&self) -> usize {
+            #[inline] fn size_hint(&self) -> usize {
                 let bytes: &[u8] = self.as_ref();
                 L::SIZE + bytes.len()
             }
-            #[inline]
-            fn encoder(&self, c: &mut impl Array<u8>) {
+            #[inline] fn encoder(&self, c: &mut impl Array<u8>) {
                 let len: L = self.data.len().try_into().expect("Invalid length type") ;
                 len.encoder(c);
                 c.extend_from_slice(&self.data);
@@ -138,7 +136,6 @@ where
 }
 
 impl<L: LenType, T> Record<L, T> {
-    #[inline]
     pub fn new(data: T) -> Self {
         Self {
             data,

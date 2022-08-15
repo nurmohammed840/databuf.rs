@@ -1,3 +1,3 @@
-// mod alloc;
+mod alloc;
 mod compound;
 mod scalar;

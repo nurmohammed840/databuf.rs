@@ -1,17 +1,15 @@
 #![doc = include_str!("../README.md")]
 #![cfg_attr(feature = "nightly", feature(array_try_map))]
 
-// pub mod len;
-// mod record;
+pub mod len;
 mod types;
+// mod record;
 
-// use core::convert::TryInto;
 use core::mem::size_of;
-// use core::{fmt, ptr};
 
 pub use bin_layout_derive::*;
+pub use len::Len;
 use std::io::{Error, ErrorKind, Result, Write};
-// pub use len::Len;
 // pub use record::*;
 
 pub trait Encoder: Sized {
@@ -68,22 +66,28 @@ pub trait Decoder<'de>: Sized {
     /// ```
     #[inline]
     fn decode(data: &'de [u8]) -> Result<Self> {
-        let mut cursor = data;
-        Self::decoder(&mut cursor)
+        let mut reader = data;
+        Self::decoder(&mut reader)
     }
+}
+
+// -------------------------------------------------------------------------------
+
+fn invalid_data<E>(error: E) -> Error
+where
+    E: Into<Box<dyn std::error::Error + Send + Sync>>
+{
+    Error::new(ErrorKind::InvalidData, error)
 }
 
 fn get_slice<'a>(this: &mut &'a [u8], len: usize) -> Result<&'a [u8]> {
     if len <= this.len() {
-        let (a, b) = unsafe { (this.get_unchecked(..len), this.get_unchecked(len..)) };
-        *this = b;
-        Ok(a)
+        unsafe {
+            let slice = this.get_unchecked(..len);
+            *this = this.get_unchecked(len..);
+            Ok(slice)
+        }
     } else {
-        end_of_bytes_err()
+        Err(Error::new(ErrorKind::UnexpectedEof, "Insufficient bytes"))
     }
-}
-
-#[inline]
-fn end_of_bytes_err<T>() -> Result<T> {
-    Err(Error::new(ErrorKind::UnexpectedEof, "Insufficient bytes"))
 }

@@ -25,6 +25,7 @@ macro_rules! impl_data_type_for_typle {
         )*
     );
 }
+
 impl_data_type_for_typle!(
     (),
     (T:0, T2:1),
@@ -49,6 +50,7 @@ impl<T: Encoder, const N: usize> Encoder for [T; N] {
         Ok(())
     }
 }
+
 impl<'de, T, const N: usize> Decoder<'de> for [T; N]
 where
     T: Decoder<'de>,

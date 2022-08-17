@@ -19,7 +19,6 @@ macro_rules! encode_len {
 }
 pub(self) use encode_len;
 
-
 fn invalid_data<E>(error: E) -> Error
 where
     E: Into<Box<dyn std::error::Error + Send + Sync>>,

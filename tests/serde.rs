@@ -42,13 +42,13 @@
 // }
 
 // macro_rules! to_bytes {
-//     [$num: expr] => { 
+//     [$num: expr] => {
 //         if cfg!(not(any(feature = "BE", feature = "NE"))) {
-//             $num.to_le_bytes() 
+//             $num.to_le_bytes()
 //         } else if cfg!(feature = "BE") {
-//             $num.to_be_bytes() 
+//             $num.to_be_bytes()
 //         } else {
-//             $num.to_ne_bytes() 
+//             $num.to_ne_bytes()
 //         }
 //     };
 // }

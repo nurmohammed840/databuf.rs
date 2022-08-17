@@ -35,35 +35,3 @@ impl Decoder<'_> for String {
         String::from_utf8(<&[u8]>::decoder(c)?.to_vec()).map_err(invalid_data)
     }
 }
-
-impl<T: Encoder> Encoder for Vec<T> {
-    #[inline]
-    fn size_hint(&self) -> usize {
-        Len::SIZE + self.iter().map(T::size_hint).sum::<usize>()
-    }
-
-    #[inline]
-    fn encoder(&self, c: &mut impl Write) -> Result<()> {
-        encode_len!(c, self.len());
-
-        for item in self {
-            item.encoder(c)?;
-        }
-        Ok(())
-    }
-}
-
-impl<'de, T> Decoder<'de> for Vec<T>
-where
-    T:  Decoder<'de>,
-{
-    #[inline]
-    fn decoder(c: &mut &'de [u8]) -> Result<Self> {
-        let len: usize = Len::decoder(c)?.into_inner().try_into().unwrap();
-        let mut vec = Vec::with_capacity(len);
-        for _ in 0..len {
-            vec.push(T::decoder(c)?);
-        }
-        Ok(vec)
-    }
-}

@@ -94,4 +94,3 @@ struct Unit;
 
 #[derive(Encoder, Decoder)]
 struct EmpatyTupleUnit();
-

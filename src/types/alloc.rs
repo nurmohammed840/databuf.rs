@@ -1,13 +1,4 @@
-use crate::*;
-
-macro_rules! encode_len {
-    [$c: expr, $len: expr] => {
-        let len = $len.try_into().unwrap();
-        Len::new(len)
-            .ok_or(Error::new(ErrorKind::InvalidInput, format!("Max payload length: {}, But got {len}", Len::MAX)))?
-            .encoder($c)?;
-    }
-}
+use super::*;
 
 macro_rules! impls {
     [Encoder for $($ty:ty),*] => {$(
@@ -27,8 +18,8 @@ impls!(Encoder for &[u8], &str, String);
 impl<'de> Decoder<'de> for &'de [u8] {
     #[inline]
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
-        let len = Len::decoder(c)?.into_inner();
-        get_slice(c, len as usize)
+        let len: usize = Len::decoder(c)?.into_inner().try_into().unwrap();
+        get_slice(c, len)
     }
 }
 
@@ -62,31 +53,17 @@ impl<T: Encoder> Encoder for Vec<T> {
     }
 }
 
-impl<'de, T: Decoder<'de>> Decoder<'de> for Vec<T> {
+impl<'de, T> Decoder<'de> for Vec<T>
+where
+    T:  Decoder<'de>,
+{
     #[inline]
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
-        let len = Len::decoder(c)?.into_inner();
-        let mut vec = Vec::with_capacity(len as usize);
+        let len: usize = Len::decoder(c)?.into_inner().try_into().unwrap();
+        let mut vec = Vec::with_capacity(len);
         for _ in 0..len {
             vec.push(T::decoder(c)?);
         }
         Ok(vec)
-    }
-}
-
-// ---------------------------------------------------------------------
-
-impl<T: Encoder> Encoder for Box<T> {
-    const SIZE: usize = size_of::<T>();
-    #[inline]
-    fn encoder(&self, c: &mut impl Write) -> Result<()> {
-        T::encoder(self, c)
-    }
-}
-
-impl<'de, T: Decoder<'de>> Decoder<'de> for Box<T> {
-    #[inline]
-    fn decoder(c: &mut &'de [u8]) -> Result<Self> {
-        T::decoder(c).map(|v| Box::new(v))
     }
 }

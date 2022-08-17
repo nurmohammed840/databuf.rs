@@ -40,9 +40,9 @@
 //! ```
 use crate::*;
 
-#[cfg(not(feature = "L3"))]
+#[cfg(feature = "L2")]
 pub use L2 as Len;
-#[cfg(feature = "L3")]
+#[cfg(not(feature = "L2"))]
 pub use L3 as Len;
 
 macro_rules! def {
@@ -50,6 +50,7 @@ macro_rules! def {
         #[derive(Default, Debug, Clone, Copy, PartialEq)]
         pub struct $name($ty);
         impl $name {
+            pub const SIZE: usize = $size;
             pub const MAX: $ty = $MAX;
             pub const fn new(num: $ty) -> Option<Self> {
                 if num > Self::MAX { None }
@@ -60,7 +61,7 @@ macro_rules! def {
         }
 
         impl Encoder for $name {
-            const SIZE: usize = $size;
+            #[inline] fn size_hint(&self) -> usize { $size }
             #[inline] $encoder
         }
         impl Decoder<'_> for $name { #[inline] $decoder }
@@ -101,7 +102,6 @@ def!(
         Ok(Self(num))
     }
 );
-
 def!(
     L3(u32),
     LenSize: 3,
@@ -145,8 +145,6 @@ def!(
     }
 );
 
-// -------------------------------------------------------------------------------
-
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -161,6 +159,7 @@ mod tests {
 
     #[test]
     fn l2() {
+        assert_eq!(L2(2).size_hint(), 2);
         assert_eq!(L2::MAX, (1 << 15) - 1);
 
         assert_len!(L2(0), [0]);
@@ -172,6 +171,7 @@ mod tests {
 
     #[test]
     fn l3() {
+        assert_eq!(L3(3).size_hint(), 3);
         assert_eq!(L3::MAX, (1 << 22) - 1);
 
         assert_len!(L3(0), [0]);

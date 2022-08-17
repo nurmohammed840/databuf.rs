@@ -5,7 +5,6 @@ use syn::punctuated::Punctuated;
 use syn::*;
 
 use quote::__private::{Span, TokenStream as TokenS};
-use syn::__private::ToTokens;
 
 // -------------------------------------------------------------------------------------
 
@@ -20,13 +19,12 @@ pub fn encoder(input: TokenStream) -> TokenStream {
 
     let mod_generics = encoder_trait_bounds(generics.clone());
     let (_, ty_generics, where_clause) = generics.split_for_impl();
-    let (size, hint, encoder) = encoder_method(data);
+    let (hint, encoder) = encoder_method(data);
 
     TokenStream::from(quote! {
         impl #mod_generics bin_layout::Encoder for #ident #ty_generics #where_clause {
-            const SIZE: usize = #size;
             fn size_hint(&self) -> usize { #hint }
-            fn encoder(&self, c: &mut impl bin_layout::Array<u8>) { #encoder }
+            fn encoder(&self, c: &mut impl std::io::Write) -> std::io::Result<()> { #encoder }
         }
     })
 }
@@ -39,8 +37,7 @@ fn encoder_trait_bounds(mut generics: Generics) -> Generics {
     }
     generics
 }
-fn encoder_method(data: Data) -> (TokenS, TokenS, TokenS) {
-    let mut size = String::from('0');
+fn encoder_method(data: Data) -> (TokenS, TokenS) {
     let mut hint = String::from("use bin_layout::Encoder as _E_; 0");
     let mut encoder = String::from("use bin_layout::Encoder as _E_;");
     match data {
@@ -48,14 +45,12 @@ fn encoder_method(data: Data) -> (TokenS, TokenS, TokenS) {
             Fields::Named(fields) => {
                 for field in fields.named {
                     let name = &field.ident.unwrap();
-                    write_size(&mut size, field.ty);
                     write_hint(&mut hint, &name);
                     write_encoder(&mut encoder, &name);
                 }
             }
             Fields::Unnamed(fields) => {
-                for (i, field) in fields.unnamed.into_iter().enumerate() {
-                    write_size(&mut size, field.ty);
+                for (i, _) in fields.unnamed.iter().enumerate() {
                     write_hint(&mut hint, i);
                     write_encoder(&mut encoder, i);
                 }
@@ -64,16 +59,11 @@ fn encoder_method(data: Data) -> (TokenS, TokenS, TokenS) {
         },
         _ => panic!("Default `Encoder` implementation for `enum` not yet stabilized"),
     };
+    encoder.push_str("Ok(())");
     (
-        TokenS::from_str(&size).unwrap(),
         TokenS::from_str(&hint).unwrap(),
         TokenS::from_str(&encoder).unwrap(),
     )
-}
-fn write_size(s: &mut String, ty: Type) {
-    s.push_str(" + <");
-    s.push_str(&ty.to_token_stream().to_string());
-    s.push_str(" as bin_layout::Encoder>::SIZE");
 }
 fn write_hint<T: std::fmt::Display>(s: &mut String, ident: T) {
     s.push_str(" + _E_::size_hint(&self.");
@@ -83,7 +73,7 @@ fn write_hint<T: std::fmt::Display>(s: &mut String, ident: T) {
 fn write_encoder<T: std::fmt::Display>(s: &mut String, ident: T) {
     s.push_str("_E_::encoder(&self.");
     s.push_str(&ident.to_string());
-    s.push_str(",c);");
+    s.push_str(",c)?;");
 }
 
 // -------------------------------------------------------------------------------
@@ -102,10 +92,10 @@ pub fn decoder(input: TokenStream) -> TokenStream {
     let decoder = decoder_method(data);
 
     TokenStream::from(quote! {
-        impl <#lt, #ig> bin_layout::Decoder<'de> for #ident #ty_generics
+        impl <#lt, #ig> bin_layout::Decoder<'_de_> for #ident #ty_generics
         #where_clause
         {
-            fn decoder(c: &mut bin_layout::Cursor<&'de [u8]>) -> core::result::Result<Self, &'static str> {
+            fn decoder(c: &mut &'_de_ [u8]) -> std::io::Result<Self> {
                 #decoder
             }
         }
@@ -141,13 +131,11 @@ fn decoder_method(data: Data) -> TokenS {
 
 /// Add a bound `T: Decoder<'de>` to every type parameter T.
 fn decoder_trait_bounds(g: &Generics) -> (LifetimeDef, Punctuated<GenericParam, token::Comma>) {
-    let mut de_lifetime = LifetimeDef::new(Lifetime::new("'de", Span::call_site()));
+    let mut de_lifetime = LifetimeDef::new(Lifetime::new("'_de_", Span::call_site()));
     let mut params = g.params.clone();
     for param in &mut params {
         match param {
-            GenericParam::Type(ty) => ty
-                .bounds
-                .push(parse_quote!(bin_layout::Decoder<'de>)),
+            GenericParam::Type(ty) => ty.bounds.push(parse_quote!(bin_layout::Decoder<'_de_>)),
 
             GenericParam::Lifetime(lt) => de_lifetime.bounds.push(lt.lifetime.clone()),
             _ => {}

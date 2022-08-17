@@ -45,8 +45,6 @@ There is two main reasons for this library to exists.
 
 ### 1. 🚀 Performance 🚀  
 
-There is no performance penalty for using this library.
-
 - Zero-copy deserialization: Its mean that no data is copied. Instead, the data is referenced.
     
     ```rust

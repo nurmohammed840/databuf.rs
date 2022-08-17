@@ -1,4 +1,4 @@
-use crate::*;
+use super::*;
 
 impl Encoder for bool {
     #[inline]
@@ -96,6 +96,7 @@ impl_data_type_for!(
 #[cfg(test)]
 mod tests {
     use super::*;
+
     #[test]
     fn test_scaler_type() {
         for word in [0x_A5C11, 0x_C0DE, 0x_DEC0DE, 0x_ADDED, 0x_AB0DE, 0x_CAFE] {

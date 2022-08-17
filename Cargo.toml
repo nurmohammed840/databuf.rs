@@ -1,6 +1,6 @@
 [package]
 name = "bin-layout"
-version = "6.0.0"
+version = "7.0.0"
 edition = "2021"
 
 description = "This library used to serialize and deserialize data in binary format."
@@ -13,17 +13,17 @@ keywords = ["binary", "encode", "decode", "serialize", "deserialize"]
 
 # Enable nightly features to enable optimization and performance.
 nightly = []
-auto_traits = ["nightly"]
+utils = []
 
 # Endianness
 BE = []         # Big Endian
 NE = []         # Native Endian
 
 # Variable-Length integer encoding types
-L3 = []         # 22 bits
+L2 = []         # 15 bits
 
 [dependencies]
-bin-layout-derive = { path = "./bin_layout_derive", version = "0.4" }
+bin-layout-derive = { path = "./bin_layout_derive", version = "0.7" }
 
 [workspace]
 members = ["bin_layout_derive"]

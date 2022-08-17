@@ -1,4 +1,4 @@
-use crate::*;
+use super::*;
 
 macro_rules! impl_data_type_for_typle {
     [$(($($name: ident : $idx: tt),*)),*]  => (
@@ -7,10 +7,7 @@ macro_rules! impl_data_type_for_typle {
             where
                 $($name: Encoder,)*
             {
-                const SIZE: usize = 0 $(+$name::SIZE)*;
-
                 #[inline] fn size_hint(&self) -> usize { 0 $(+ self.$idx.size_hint())* }
-
                 #[inline] fn encoder(&self, _c: &mut impl Write) -> Result<()> {
                     $(self.$idx.encoder(_c)?;)*
                     Ok(())
@@ -39,8 +36,6 @@ impl_data_type_for_typle!(
 );
 
 impl<T: Encoder, const N: usize> Encoder for [T; N] {
-    const SIZE: usize = N * T::SIZE;
-
     #[inline]
     fn size_hint(&self) -> usize {
         self.iter().map(T::size_hint).sum()
@@ -54,7 +49,10 @@ impl<T: Encoder, const N: usize> Encoder for [T; N] {
         Ok(())
     }
 }
-impl<'de, T: Decoder<'de>, const N: usize> Decoder<'de> for [T; N] {
+impl<'de, T, const N: usize> Decoder<'de> for [T; N]
+where
+    T: Decoder<'de>,
+{
     #[inline]
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
         #[cfg(feature = "nightly")]
@@ -69,8 +67,10 @@ impl<'de, T: Decoder<'de>, const N: usize> Decoder<'de> for [T; N] {
 }
 
 impl<const N: usize> Encoder for &[u8; N] {
-    const SIZE: usize = N;
-
+    #[inline]
+    fn size_hint(&self) -> usize {
+        N
+    }
     #[inline]
     fn encoder(&self, writer: &mut impl Write) -> Result<()> {
         writer.write_all(self.as_slice())

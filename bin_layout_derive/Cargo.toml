@@ -9,6 +9,9 @@ repository = "https://github.com/nurmohammed840/bin-layout.rs"
 license = "Apache-2.0"
 keywords = ["binary", "encode", "decode", "serialize", "deserialize"]
 
+[features]
+sizehint = []
+
 [lib]
 proc-macro = true
 

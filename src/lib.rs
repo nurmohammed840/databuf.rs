@@ -3,24 +3,18 @@
 
 pub use bin_layout_derive::*;
 pub mod len;
-#[cfg(feature = "utils")]
-pub mod record;
 mod types;
 
-use std::{
-    io::{Result, Write},
-    mem::size_of,
-};
+#[cfg(feature = "sizehint")]
+mod size_hint;
+#[cfg(feature = "sizehint")]
+pub use size_hint::SizeHint;
 
-pub trait Encoder: Sized {
+use std::io::{Result, Write};
+
+pub trait Encoder {
     /// Serialize the data to binary format.
     fn encoder(&self, _: &mut impl Write) -> Result<()>;
-
-    /// Calculate total estimated size of the data structure in bytes.
-    #[inline]
-    fn size_hint(&self) -> usize {
-        size_of::<Self>()
-    }
 
     /// ### Example
     ///
@@ -37,7 +31,7 @@ pub trait Encoder: Sized {
     /// ```
     #[inline]
     fn encode(&self) -> Vec<u8> {
-        let mut vec = Vec::with_capacity(self.size_hint());
+        let mut vec = Vec::new();
         self.encoder(&mut vec).unwrap();
         vec
     }

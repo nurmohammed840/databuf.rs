@@ -3,11 +3,18 @@ use super::*;
 macro_rules! impl_data_type_for_typle {
     [$(($($name: ident : $idx: tt),*)),*]  => (
         $(
+            #[cfg(feature = "sizehint")]
+            impl<$($name,)*> SizeHint for ($($name,)*)
+            where
+                $($name: SizeHint,)*
+            {
+                #[inline] fn size_hint(&self) -> usize { 0 $(+ self.$idx.size_hint())* }
+            }
+
             impl<$($name,)*> Encoder for ($($name,)*)
             where
                 $($name: Encoder,)*
             {
-                #[inline] fn size_hint(&self) -> usize { 0 $(+ self.$idx.size_hint())* }
                 #[inline] fn encoder(&self, _c: &mut impl Write) -> Result<()> {
                     $(self.$idx.encoder(_c)?;)*
                     Ok(())
@@ -38,16 +45,8 @@ impl_data_type_for_typle!(
 
 impl<T: Encoder, const N: usize> Encoder for [T; N] {
     #[inline]
-    fn size_hint(&self) -> usize {
-        self.iter().map(T::size_hint).sum()
-    }
-
-    #[inline]
     fn encoder(&self, c: &mut impl Write) -> Result<()> {
-        for item in self {
-            item.encoder(c)?;
-        }
-        Ok(())
+        self.iter().try_for_each(|item| item.encoder(c))
     }
 }
 
@@ -65,24 +64,5 @@ where
             .map(|_| T::decoder(c))
             .collect::<Result<Vec<_>>>()
             .map(|v| unsafe { v.try_into().unwrap_unchecked() });
-    }
-}
-
-impl<const N: usize> Encoder for &[u8; N] {
-    #[inline]
-    fn size_hint(&self) -> usize {
-        N
-    }
-    #[inline]
-    fn encoder(&self, writer: &mut impl Write) -> Result<()> {
-        writer.write_all(self.as_slice())
-    }
-}
-
-impl<'de, const N: usize> Decoder<'de> for &'de [u8; N] {
-    #[inline]
-    fn decoder(c: &mut &'de [u8]) -> Result<Self> {
-        // SEAFTY: bytes.len() == N
-        get_slice(c, N).map(|bytes| unsafe { bytes.try_into().unwrap_unchecked() })
     }
 }

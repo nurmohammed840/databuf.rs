@@ -2,12 +2,15 @@ use super::*;
 use len::Len;
 use std::io::{Error, ErrorKind};
 
-mod alloc;
+mod zero_copy;
 mod collection;
 mod compound;
 mod enumerate;
 mod scalar;
 mod wrapper;
+
+#[cfg(feature = "utils")]
+pub mod utils;
 
 macro_rules! encode_len {
     [$c: expr, $len: expr] => {

@@ -1,10 +1,6 @@
 use crate::*;
 
 impl<T> Encoder for std::marker::PhantomData<T> {
-    fn size_hint(&self) -> usize {
-        0
-    }
-
     fn encoder(&self, _: &mut impl Write) -> Result<()> {
         Ok(())
     }
@@ -19,9 +15,6 @@ impl<T> Decoder<'_> for std::marker::PhantomData<T> {
 //  ------------------------------------------------------------------------
 
 impl<T: Encoder> Encoder for Box<T> {
-    fn size_hint(&self) -> usize {
-        T::size_hint(self)
-    }
     #[inline]
     fn encoder(&self, c: &mut impl Write) -> Result<()> {
         T::encoder(self, c)

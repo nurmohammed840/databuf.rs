@@ -14,6 +14,7 @@ keywords = ["binary", "encode", "decode", "serialize", "deserialize"]
 # Enable nightly features to enable optimization and performance.
 nightly = []
 utils = []
+sizehint = ["bin-layout-derive/sizehint"]
 
 # Endianness
 BE = []         # Big Endian

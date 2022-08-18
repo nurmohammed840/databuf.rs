@@ -6,74 +6,101 @@ use syn::*;
 
 use quote::__private::{Span, TokenStream as TokenS};
 
-// -------------------------------------------------------------------------------------
+#[cfg(feature = "sizehint")]
+#[proc_macro_derive(SizeHint)]
+pub fn size_hint(input: TokenStream) -> TokenStream {
+    let DeriveInput {
+        data,
+        ident,
+        mut generics,
+        ..
+    } = parse_macro_input!(input);
+    // Add a bound `T: SizeHint` to every type parameter T.
+    trait_bounds(&mut generics, parse_quote!(bin_layout::SizeHint));
+    let (_, ty_generics, where_clause) = generics.split_for_impl();
+    let body = {
+        let mut body = String::from("use bin_layout::SizeHint as _SH_; 0");
+        let mut write_hint = |ident: String| {
+            body.push_str(" + _SH_::size_hint(&self.");
+            body.push_str(&ident);
+            body.push(')');
+        };
+        match data {
+            Data::Struct(data_struct) => match data_struct.fields {
+                Fields::Named(fields) => {
+                    for field in fields.named {
+                        write_hint(field.ident.unwrap().to_string());
+                    }
+                }
+                Fields::Unnamed(fields) => {
+                    for (i, _) in fields.unnamed.iter().enumerate() {
+                        write_hint(i.to_string());
+                    }
+                }
+                Fields::Unit => {}
+            },
+            _ => panic!("Default `Encoder` implementation for `enum` not yet stabilized"),
+        };
+        TokenS::from_str(&body).unwrap()
+    };
+
+    TokenStream::from(quote! {
+        impl #generics bin_layout::SizeHint for #ident #ty_generics #where_clause {
+            fn size_hint(&self) -> usize { #body }
+        }
+    })
+}
 
 #[proc_macro_derive(Encoder)]
 pub fn encoder(input: TokenStream) -> TokenStream {
     let DeriveInput {
         data,
         ident,
-        generics,
+        mut generics,
         ..
     } = parse_macro_input!(input);
 
-    let mod_generics = encoder_trait_bounds(generics.clone());
+    trait_bounds(&mut generics, parse_quote!(bin_layout::Encoder));
     let (_, ty_generics, where_clause) = generics.split_for_impl();
-    let (hint, encoder) = encoder_method(data);
-
+    let body = {
+        let mut body = String::from("use bin_layout::Encoder as _E_;");
+        let mut write_encoder = |ident:String| {
+            body.push_str("_E_::encoder(&self.");
+            body.push_str(&ident);
+            body.push_str(",c)?;");
+        };
+        match data {
+            Data::Struct(data_struct) => match data_struct.fields {
+                Fields::Named(fields) => {
+                    for field in fields.named {
+                        write_encoder(field.ident.unwrap().to_string());
+                    }
+                }
+                Fields::Unnamed(fields) => {
+                    for (i, _) in fields.unnamed.iter().enumerate() {
+                        write_encoder(i.to_string());
+                    }
+                }
+                Fields::Unit => {}
+            },
+            _ => panic!("Default `Encoder` implementation for `enum` not yet stabilized"),
+        };
+        body.push_str("Ok(())");
+        TokenS::from_str(&body).unwrap()
+    };
     TokenStream::from(quote! {
-        impl #mod_generics bin_layout::Encoder for #ident #ty_generics #where_clause {
-            fn size_hint(&self) -> usize { #hint }
-            fn encoder(&self, c: &mut impl std::io::Write) -> std::io::Result<()> { #encoder }
+        impl #generics bin_layout::Encoder for #ident #ty_generics #where_clause {
+            fn encoder(&self, c: &mut impl std::io::Write) -> std::io::Result<()> { #body }
         }
     })
 }
-/// Add a bound `T: Encoder` to every type parameter T.
-fn encoder_trait_bounds(mut generics: Generics) -> Generics {
+
+fn trait_bounds(generics: &mut Generics, bound: TypeParamBound) {
     for param in &mut generics.params {
         if let GenericParam::Type(type_param) = param {
-            type_param.bounds.push(parse_quote!(bin_layout::Encoder));
+            type_param.bounds.push(bound.clone());
         }
     }
-    generics
-}
-fn encoder_method(data: Data) -> (TokenS, TokenS) {
-    let mut hint = String::from("use bin_layout::Encoder as _E_; 0");
-    let mut encoder = String::from("use bin_layout::Encoder as _E_;");
-    match data {
-        Data::Struct(data_struct) => match data_struct.fields {
-            Fields::Named(fields) => {
-                for field in fields.named {
-                    let name = &field.ident.unwrap();
-                    write_hint(&mut hint, &name);
-                    write_encoder(&mut encoder, &name);
-                }
-            }
-            Fields::Unnamed(fields) => {
-                for (i, _) in fields.unnamed.iter().enumerate() {
-                    write_hint(&mut hint, i);
-                    write_encoder(&mut encoder, i);
-                }
-            }
-            Fields::Unit => {}
-        },
-        _ => panic!("Default `Encoder` implementation for `enum` not yet stabilized"),
-    };
-    encoder.push_str("Ok(())");
-    (
-        TokenS::from_str(&hint).unwrap(),
-        TokenS::from_str(&encoder).unwrap(),
-    )
-}
-fn write_hint<T: std::fmt::Display>(s: &mut String, ident: T) {
-    s.push_str(" + _E_::size_hint(&self.");
-    s.push_str(&ident.to_string());
-    s.push(')');
-}
-fn write_encoder<T: std::fmt::Display>(s: &mut String, ident: T) {
-    s.push_str("_E_::encoder(&self.");
-    s.push_str(&ident.to_string());
-    s.push_str(",c)?;");
 }
 
 // -------------------------------------------------------------------------------
@@ -89,46 +116,18 @@ pub fn decoder(input: TokenStream) -> TokenStream {
 
     let (lt, ig) = decoder_trait_bounds(&generics);
     let (_, ty_generics, where_clause) = generics.split_for_impl();
-    let decoder = decoder_method(data);
+    let body = decoder_body(data);
 
     TokenStream::from(quote! {
         impl <#lt, #ig> bin_layout::Decoder<'_de_> for #ident #ty_generics
         #where_clause
         {
             fn decoder(c: &mut &'_de_ [u8]) -> std::io::Result<Self> {
-                #decoder
+                #body
             }
         }
     })
 }
-fn decoder_method(data: Data) -> TokenS {
-    let mut decoder = String::from("use bin_layout::Decoder as _D_; Ok(Self");
-    match data {
-        Data::Struct(data_struct) => match data_struct.fields {
-            Fields::Named(fields) => {
-                decoder.push('{');
-                for field in fields.named {
-                    decoder.push_str(&field.ident.unwrap().to_string());
-                    decoder.push(':');
-                    decoder.push_str("_D_::decoder(c)?,");
-                }
-                decoder.push('}');
-            }
-            Fields::Unnamed(fields) => {
-                decoder.push('(');
-                for _ in fields.unnamed {
-                    decoder.push_str("_D_::decoder(c)?,");
-                }
-                decoder.push(')');
-            }
-            Fields::Unit => {}
-        },
-        _ => panic!("Default `Decoder` implementation for `enum` not yet stabilized"),
-    };
-    decoder.push(')');
-    TokenS::from_str(&decoder).unwrap()
-}
-
 /// Add a bound `T: Decoder<'de>` to every type parameter T.
 fn decoder_trait_bounds(g: &Generics) -> (LifetimeDef, Punctuated<GenericParam, token::Comma>) {
     let mut de_lifetime = LifetimeDef::new(Lifetime::new("'_de_", Span::call_site()));
@@ -136,10 +135,36 @@ fn decoder_trait_bounds(g: &Generics) -> (LifetimeDef, Punctuated<GenericParam, 
     for param in &mut params {
         match param {
             GenericParam::Type(ty) => ty.bounds.push(parse_quote!(bin_layout::Decoder<'_de_>)),
-
             GenericParam::Lifetime(lt) => de_lifetime.bounds.push(lt.lifetime.clone()),
             _ => {}
         }
     }
     (de_lifetime, params)
+}
+fn decoder_body(data: Data) -> TokenS {
+    let mut body = String::from("use bin_layout::Decoder as _D_; Ok(Self");
+    match data {
+        Data::Struct(data_struct) => match data_struct.fields {
+            Fields::Named(fields) => {
+                body.push('{');
+                for field in fields.named {
+                    body.push_str(&field.ident.unwrap().to_string());
+                    body.push(':');
+                    body.push_str("_D_::decoder(c)?,");
+                }
+                body.push('}');
+            }
+            Fields::Unnamed(fields) => {
+                body.push('(');
+                for _ in fields.unnamed {
+                    body.push_str("_D_::decoder(c)?,");
+                }
+                body.push(')');
+            }
+            Fields::Unit => {}
+        },
+        _ => panic!("Default `Decoder` implementation for `enum` not yet stabilized"),
+    };
+    body.push(')');
+    TokenS::from_str(&body).unwrap()
 }

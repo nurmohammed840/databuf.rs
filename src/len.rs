@@ -61,7 +61,6 @@ macro_rules! def {
         }
 
         impl Encoder for $name {
-            #[inline] fn size_hint(&self) -> usize { $size }
             #[inline] $encoder
         }
         impl Decoder<'_> for $name { #[inline] $decoder }
@@ -159,7 +158,6 @@ mod tests {
 
     #[test]
     fn l2() {
-        assert_eq!(L2(2).size_hint(), 2);
         assert_eq!(L2::MAX, (1 << 15) - 1);
 
         assert_len!(L2(0), [0]);
@@ -171,7 +169,6 @@ mod tests {
 
     #[test]
     fn l3() {
-        assert_eq!(L3(3).size_hint(), 3);
         assert_eq!(L3::MAX, (1 << 22) - 1);
 
         assert_len!(L3(0), [0]);

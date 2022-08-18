@@ -1,20 +1,57 @@
 use super::*;
-use std::collections::{BTreeMap, BTreeSet};
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
+
+macro_rules! impl_encoder {
+    (Set) => {
+        // #[inline]
+        // fn size_hint(&self) -> usize {
+        //     Len::SIZE + self.iter().map(T::size_hint).sum::<usize>()
+        // }
+        #[inline]
+        fn encoder(&self, c: &mut impl Write) -> Result<()> {
+            encode_len!(c, self.len());
+            self.iter().try_for_each(|item| item.encoder(c))
+        }
+    };
+    (Map) => {
+        // #[inline]
+        // fn size_hint(&self) -> usize {
+        //     Len::SIZE
+        //         + self
+        //             .iter()
+        //             .map(|(k, v)| k.size_hint() + v.size_hint())
+        //             .sum::<usize>()
+        // }
+        #[inline]
+        fn encoder(&self, c: &mut impl Write) -> Result<()> {
+            encode_len!(c, self.len());
+            for (k, v) in self.iter() {
+                k.encoder(c)?;
+                v.encoder(c)?;
+            }
+            Ok(())
+        }
+    };
+}
 
 impl<T: Encoder> Encoder for Vec<T> {
-    #[inline]
-    fn size_hint(&self) -> usize {
-        Len::SIZE + self.iter().map(T::size_hint).sum::<usize>()
-    }
+    impl_encoder! {Set}
+}
 
-    #[inline]
-    fn encoder(&self, c: &mut impl Write) -> Result<()> {
-        encode_len!(c, self.len());
-        for item in self {
-            item.encoder(c)?;
-        }
-        Ok(())
-    }
+impl<T: Encoder, S> Encoder for HashSet<T, S> {
+    impl_encoder! {Set}
+}
+
+impl<T: Encoder> Encoder for BTreeSet<T> {
+    impl_encoder! {Set}
+}
+
+impl<K: Encoder, V: Encoder, S> Encoder for HashMap<K, V, S> {
+    impl_encoder! {Map}
+}
+
+impl<K: Encoder, V: Encoder> Encoder for BTreeMap<K, V> {
+    impl_encoder! {Map}
 }
 
 impl<'de, T> Decoder<'de> for Vec<T>
@@ -32,25 +69,12 @@ where
     }
 }
 
-// ------------------------------------------------------------------------------
-
-impl<K: Encoder, V: Encoder> Encoder for BTreeMap<K, V> {
-    fn size_hint(&self) -> usize {
-        Len::SIZE
-            + self
-                .iter()
-                .map(|(k, v)| k.size_hint() + v.size_hint())
-                .sum::<usize>()
-    }
-
-    fn encoder(&self, c: &mut impl Write) -> Result<()> {
-        encode_len!(c, self.len());
-
-        for (k, v) in self.iter() {
-            k.encoder(c)?;
-            v.encoder(c)?;
-        }
-        Ok(())
+impl<'de, T> Decoder<'de> for BTreeSet<T>
+where
+    T: Decoder<'de> + Ord,
+{
+    fn decoder(c: &mut &'de [u8]) -> Result<Self> {
+        Vec::<T>::decoder(c).map(BTreeSet::from_iter)
     }
 }
 
@@ -64,28 +88,41 @@ where
     }
 }
 
-impl<T: Encoder> Encoder for BTreeSet<T> {
-    fn encoder(&self, c: &mut impl Write) -> Result<()> {
-        encode_len!(c, self.len());
-        for v in self.iter() {
-            v.encoder(c)?;
-        }
-        Ok(())
-    }
-}
-
-impl<'de, T> Decoder<'de> for BTreeSet<T>
+impl<'de, K, V, S> Decoder<'de> for HashMap<K, V, S>
 where
-    T: Decoder<'de> + Ord,
+    K: Decoder<'de> + Eq + std::hash::Hash,
+    V: Decoder<'de>,
+    S: std::hash::BuildHasher + Default,
 {
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
-        Vec::<T>::decoder(c).map(BTreeSet::from_iter)
+        Vec::<(K, V)>::decoder(c).map(HashMap::from_iter)
     }
 }
 
 #[cfg(test)]
 mod tests {
+    use std::time::Instant;
+
     use super::*;
+
+    #[test]
+    fn branch() {
+        let map = Vec::from_iter(0..u16::MAX);
+
+        let time = Instant::now();
+
+        for _ in 0..3 {
+            let byte = map.encode();
+            assert_eq!(131073,byte.len());
+        }
+        
+        println!("{:?}", time.elapsed());
+    }
+
+    // fn hashmap() {
+    //     let map = HashMap::<u8, u8>::new();
+    //     map.encode();
+    // }
 
     #[test]
     fn btree() {

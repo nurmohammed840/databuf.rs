@@ -1,9 +1,10 @@
 use super::*;
-use core::{
+use std::{
+    mem::size_of,
     marker::PhantomData,
     ops::{Deref, DerefMut},
+    fmt
 };
-use std::fmt;
 
 pub trait LenType: TryFrom<usize> + Encoder + for<'de> Decoder<'de> {}
 impl LenType for u8 {}
@@ -105,10 +106,7 @@ where
         let len: L = self.data.len().try_into().unwrap();
         len.encoder(c)?;
 
-        for record in &self.data {
-            record.encoder(c)?;
-        }
-        Ok(())
+        self.data.iter().try_for_each(|item| item.encoder(c))
     }
 }
 

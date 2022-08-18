@@ -72,7 +72,7 @@ macro_rules! impl_data_type_for {
         impl Decoder<'_> for $rty {
             #[inline]
             fn decoder(c: &mut &[u8]) -> Result<Self> {
-                let arr = <&[u8; size_of::<Self>()]>::decoder(c)?;
+                let arr = <&[u8; std::mem::size_of::<Self>()]>::decoder(c)?;
                 #[cfg(not(any(feature = "BE", feature = "NE")))]
                 return Ok(Self::from_le_bytes(*arr));
                 #[cfg(feature = "BE")]

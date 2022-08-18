@@ -1,13 +1,6 @@
 use crate::*;
 
 impl<T: Encoder> Encoder for Option<T> {
-    fn size_hint(&self) -> usize {
-        match self {
-            Some(v) => 1 + v.size_hint(),
-            None => 1,
-        }
-    }
-
     fn encoder(&self, c: &mut impl Write) -> Result<()> {
         match self {
             Some(val) => {
@@ -29,13 +22,6 @@ impl<'de, T: Decoder<'de>> Decoder<'de> for Option<T> {
 }
 
 impl<T: Encoder, E: Encoder> Encoder for std::result::Result<T, E> {
-    fn size_hint(&self) -> usize {
-        1 + match self {
-            Ok(v) => v.size_hint(),
-            Err(e) => e.size_hint(),
-        }
-    }
-
     fn encoder(&self, c: &mut impl Write) -> Result<()> {
         match self {
             Ok(val) => {

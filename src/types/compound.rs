@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 
 macro_rules! impl_data_type_for_typle {
     [$(($($name: ident : $idx: tt),*)),*]  => (
@@ -64,5 +64,21 @@ where
             .map(|_| T::decoder(c))
             .collect::<Result<Vec<_>>>()
             .map(|v| unsafe { v.try_into().unwrap_unchecked() });
+    }
+}
+
+
+// impl<const N: usize> Encoder for &[u8; N] {
+//     #[inline]
+//     fn encoder(&self, writer: &mut impl Write) -> Result<()> {
+//         writer.write_all(self.as_slice())
+//     }
+// }
+
+impl<'de, const N: usize> Decoder<'de> for &'de [u8; N] {
+    #[inline]
+    fn decoder(c: &mut &'de [u8]) -> Result<Self> {
+        // SEAFTY: bytes.len() == N
+        get_slice(c, N).map(|bytes| unsafe { bytes.try_into().unwrap_unchecked() })
     }
 }

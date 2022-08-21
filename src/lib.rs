@@ -4,13 +4,17 @@
 pub use bin_layout_derive::*;
 pub mod len;
 mod types;
+mod specialization;
 
-#[cfg(feature = "sizehint")]
-mod size_hint;
-#[cfg(feature = "sizehint")]
-pub use size_hint::SizeHint;
+// pub mod record;
+// use record::*;
 
-use std::io::{Result, Write};
+// #[cfg(feature = "sizehint")]
+// mod size_hint;
+// #[cfg(feature = "sizehint")]
+// pub use size_hint::SizeHint;
+
+use std::io::{Error, ErrorKind, Result, Write};
 
 pub trait Encoder {
     /// Serialize the data to binary format.
@@ -61,3 +65,33 @@ pub trait Decoder<'de>: Sized {
         Self::decoder(&mut reader)
     }
 }
+
+// ------------------------------------------------------------
+
+fn invalid_data<E>(error: E) -> Error
+where
+    E: Into<Box<dyn std::error::Error + Send + Sync>>,
+{
+    Error::new(ErrorKind::InvalidData, error)
+}
+
+// fn invalid_input<E>(error: E) -> Error
+// where
+//     E: Into<Box<dyn std::error::Error + Send + Sync>>,
+// {
+//     Error::new(ErrorKind::InvalidInput, error)
+// }
+
+fn get_slice<'a>(this: &mut &'a [u8], len: usize) -> Result<&'a [u8]> {
+    if len <= this.len() {
+        unsafe {
+            let slice = this.get_unchecked(..len);
+            *this = this.get_unchecked(len..);
+            Ok(slice)
+        }
+    } else {
+        Err(Error::new(ErrorKind::UnexpectedEof, "Insufficient bytes"))
+    }
+}
+
+// str, [T], String

@@ -1,4 +1,4 @@
-use super::*;
+use crate::*;
 
 impl Encoder for bool {
     #[inline]
@@ -36,10 +36,19 @@ impl Encoder for u8 {
         writer.write_all(&[*self])
     }
 }
+
 impl Decoder<'_> for u8 {
     #[inline]
     fn decoder(reader: &mut &[u8]) -> Result<Self> {
-        get_slice(reader, 1).map(|data| data[0])
+        if reader.len() > 0 {
+            unsafe {
+                let slice = reader.get_unchecked(1);
+                *reader = reader.get_unchecked(1..);
+                Ok(*slice)
+            }
+        } else {
+            Err(Error::new(ErrorKind::UnexpectedEof, "Insufficient bytes"))
+        }
     }
 }
 
@@ -55,12 +64,10 @@ impl Decoder<'_> for i8 {
         u8::decoder(c).map(|byte| byte as i8)
     }
 }
-
 macro_rules! impl_data_type_for {
     [$($rty:ty)*] => ($(
         impl Encoder for $rty {
-            #[inline]
-            fn encoder(&self, writer: &mut impl Write) -> Result<()> {
+            #[inline] fn encoder(&self, writer: &mut impl Write) -> Result<()> {
                 #[cfg(not(any(feature = "BE", feature = "NE")))]
                 return writer.write_all(&self.to_le_bytes());
                 #[cfg(feature = "BE")]
@@ -70,8 +77,7 @@ macro_rules! impl_data_type_for {
             }
         }
         impl Decoder<'_> for $rty {
-            #[inline]
-            fn decoder(c: &mut &[u8]) -> Result<Self> {
+            #[inline] fn decoder(c: &mut &[u8]) -> Result<Self> {
                 let arr = <&[u8; std::mem::size_of::<Self>()]>::decoder(c)?;
                 #[cfg(not(any(feature = "BE", feature = "NE")))]
                 return Ok(Self::from_le_bytes(*arr));
@@ -90,8 +96,6 @@ impl_data_type_for!(
     usize isize
     f32 f64
 );
-
-//---------------------------------------------------------------------------------
 
 #[cfg(test)]
 mod tests {

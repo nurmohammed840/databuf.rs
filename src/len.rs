@@ -38,6 +38,7 @@
 //! ```text
 //! 1st byte: 0_1101011      # MSB is 0, So we don't have to read another bytes.
 //! ```
+
 use crate::*;
 
 #[cfg(feature = "L2")]
@@ -59,11 +60,15 @@ macro_rules! def {
             pub const unsafe fn new_unchecked(num: $ty) -> Self { Self(num) }
             #[inline] pub fn into_inner(self) -> $ty { self.0 }
         }
-
-        impl Encoder for $name {
-            #[inline] $encoder
-        }
+        impl Encoder for $name { #[inline] $encoder }
         impl Decoder<'_> for $name { #[inline] $decoder }
+        impl TryFrom<usize> for $name {
+            type Error = String;
+            fn try_from(num: usize) -> std::result::Result<Self, Self::Error> {
+                let num: $ty = num.try_into().map_err(|err:  std::num::TryFromIntError| err.to_string())?;
+                Self::new(num).ok_or(format!("Max payload length: {}, But got {num}", $name::MAX))
+            }
+        }
         impl From<$ty> for $name { fn from(num: $ty) -> Self { Self(num) } }
         impl core::ops::Deref for $name {
             type Target = $ty;

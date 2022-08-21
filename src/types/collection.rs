@@ -3,10 +3,6 @@ use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
 macro_rules! impl_encoder {
     (Set) => {
-        // #[inline]
-        // fn size_hint(&self) -> usize {
-        //     Len::SIZE + self.iter().map(T::size_hint).sum::<usize>()
-        // }
         #[inline]
         fn encoder(&self, c: &mut impl Write) -> Result<()> {
             encode_len!(c, self.len());
@@ -14,14 +10,6 @@ macro_rules! impl_encoder {
         }
     };
     (Map) => {
-        // #[inline]
-        // fn size_hint(&self) -> usize {
-        //     Len::SIZE
-        //         + self
-        //             .iter()
-        //             .map(|(k, v)| k.size_hint() + v.size_hint())
-        //             .sum::<usize>()
-        // }
         #[inline]
         fn encoder(&self, c: &mut impl Write) -> Result<()> {
             encode_len!(c, self.len());
@@ -113,9 +101,9 @@ mod tests {
 
         for _ in 0..3 {
             let byte = map.encode();
-            assert_eq!(131073,byte.len());
+            assert_eq!(131073, byte.len());
         }
-        
+
         println!("{:?}", time.elapsed());
     }
 

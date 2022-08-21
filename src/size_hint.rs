@@ -1,5 +1,6 @@
-use super::*;
+use std::collections::{BTreeMap, BTreeSet, HashMap, HashSet};
 
+use super::*;
 pub trait SizeHint {
     /// Calculate total estimated size of the data structure in bytes.
     #[inline]
@@ -9,8 +10,20 @@ pub trait SizeHint {
 }
 
 macro_rules! size_hint {
-    [$($ty:ty: $size:literal)*] => { $(impl SizeHint for $ty { fn size_hint(&self) -> usize { $size } })* };
+    [Set] => {
+        #[inline] fn size_hint(&self) -> usize {
+            len::Len::SIZE + self.iter().map(T::size_hint).sum::<usize>()
+        }
+    };
+    [Map] => {
+        #[inline] fn size_hint(&self) -> usize {
+            len::Len::SIZE + self .iter()
+                .map(|(k, v)| k.size_hint() + v.size_hint())
+                .sum::<usize>()
+        }
+    };
     [$($ty:ty)*] => { $(impl SizeHint for $ty {})* };
+    [$($ty:ty: $size:literal)*] => { $(impl SizeHint for $ty { fn size_hint(&self) -> usize { $size } })* };
 }
 
 size_hint! {
@@ -65,4 +78,24 @@ impl<T> SizeHint for std::marker::PhantomData<T> {
     fn size_hint(&self) -> usize {
         0
     }
+}
+
+impl<T: SizeHint> SizeHint for Vec<T> {
+    size_hint! {Set}
+}
+
+impl<T: SizeHint, S> SizeHint for HashSet<T, S> {
+    size_hint! {Set}
+}
+
+impl<T: SizeHint> SizeHint for BTreeSet<T> {
+    size_hint! {Set}
+}
+
+impl<K: SizeHint, V: SizeHint, S> SizeHint for HashMap<K, V, S> {
+    size_hint! {Map}
+}
+
+impl<K: SizeHint, V: SizeHint> SizeHint for BTreeMap<K, V> {
+    size_hint! {Map}
 }

@@ -1,61 +1,73 @@
 use crate::*;
+use len::Len;
 
 macro_rules! impls {
     [Encoder for $($ty:ty),*] => {$(
-        #[cfg(feature = "sizehint")]
-        impl<L: LenType> SizeHint for Record<L, $ty> {
-            #[inline] fn size_hint(&self) -> usize {
-                let bytes: &[u8] = self.data.as_ref();
-                std::mem::size_of::<L>() + bytes.len()
-            }
-        }
-        impl<Len: LenType> Encoder for Record<Len, $ty>
+        impl<Len: LenType> Encoder for Record<Len, &$ty>
         where
-            Len: LenType,
             Len::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
         {
-            #[inline] fn encoder(&self, c: &mut impl Write) -> Result<()> {
-                let len: Len = self.data.len().try_into().map_err(invalid_input)?;
-                len.encoder(c)?;
-                c.write_all(&self.data.as_ref())
-            }
+            #[inline] fn encoder(&self, c: &mut impl Write) -> Result<()> { impls!(@Body: self.data, c) }
         }
         impl Encoder for $ty {
-            #[inline] fn encoder(&self, c: &mut impl Write) -> Result<()> {
-                let len: len::Len = self.len().try_into().map_err(invalid_input)?;
-                len.encoder(c)?;
-                c.write_all(&self.as_ref())
-            }
+            #[inline] fn encoder(&self, c: &mut impl Write) -> Result<()> { impls!(@Body: self, c) }
         }
-        // impl Encoder for $ty {
-        //     #[inline] fn encoder(&self, c: &mut impl Write) -> Result<()> {
-        //         Record::<Len, $ty>::encod
-        //         // encode_len!(c, self.len());
-        //         // c.write_all(self.as_ref())
-        //     }
-        // }
     )*};
+    [@Body: $data:expr, $c: expr] => ({
+        let len: Len = $data.len().try_into().map_err(invalid_input)?;
+        len.encoder($c)?;
+        $c.write_all($data.as_ref())
+    });
 }
 
-impls!(Encoder for &[u8], &str, String);
+impls!(Encoder for [u8], str, String);
 
+type DynErr = Box<dyn std::error::Error + Send + Sync>;
 
-// #[test]
-// fn test_name() {
-//     let data = vec![0u8; 127];
-//     let re = data.as_slice();
-//     // println!("{:?}", re.encode());
+fn read_slice<'de, Len: LenType>(c: &mut &'de [u8]) -> Result<&'de [u8]>
+where
+    usize: TryFrom<Len>,
+    <usize as TryFrom<Len>>::Error: Into<DynErr>,
+{
+    let len = Len::decoder(c)?.try_into().map_err(invalid_data)?;
+    get_slice(c, len)
+}
 
-//     let g = Record::<len::L3, _>::new(re);
-//     println!("{:?}", g.encode());
-// }
-
-// macro_rules! encode_len {
-//     [$c: expr, $len: expr] => {
-//         let len = $len.try_into().unwrap();
-//         Len::new(len)
-//             .ok_or(Error::new(ErrorKind::InvalidInput, format!("Max payload length: {}, But got {len}", Len::MAX)))?
-//             .encoder($c)?;
+// impl<'de> Decoder<'de> for &'de str {
+//     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
+//         let data = read_slice::<Len>(c)?;
+//         todo!()
 //     }
 // }
-// pub(self) use encode_len;
+impl<'de, Len: LenType> Decoder<'de> for Record<Len, &'de str>
+// where
+//     usize: TryFrom<L>,
+// <usize as TryFrom<L>>::Error: fmt::Debug,
+{
+    fn decoder(c: &mut &'de [u8]) -> Result<Self> {
+        todo!()
+        // let bytes = <Record<L, &[u8]>>::decoder(c)?;
+        // core::str::from_utf8(bytes.data)
+        //     .map_err(invalid_data)
+        //     .map(Record::new)
+    }
+}
+
+// impl<'de, Len: LenType> Decoder<'de> for Record<Len, &'de [u8]>
+// where
+//     usize: TryFrom<Len>,
+//     <usize as TryFrom<Len>>::Error: Into<Box<dyn std::error::Error + Send + Sync>>,
+// {
+//     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
+//         let len: usize = Len::decoder(c)?.try_into().map_err(invalid_data)?;
+//         get_slice(c, len).map(Record::new)
+//     }
+// }
+
+// impl<T: Encoder> Encoder for [T] {
+//     fn encoder(&self, c: &mut impl Write) -> Result<()> {
+//         let len: Len = self.len().try_into().map_err(invalid_input)?;
+//         len.encoder(c)?;
+//         self.iter().try_for_each(|val| val.encoder(c))
+//     }
+// }

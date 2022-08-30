@@ -41,3 +41,11 @@ impl<'de, T: Decoder<'de>> Decoder<'de> for Box<T> {
         T::decoder(c).map(|v| Box::new(v))
     }
 }
+
+
+// impl<'de, T: Decoder<'de>> Decoder<'de> for Box<[T]> {
+//     #[inline]
+//     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
+//         Vec::<T>::decoder(c).map(|v| Box::new(v))
+//     }
+// }

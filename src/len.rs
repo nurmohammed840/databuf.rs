@@ -69,6 +69,15 @@ macro_rules! def {
                 Self::new(num).ok_or(format!("Max payload length: {}, But got {num}", $name::MAX))
             }
         }
+        // impl TryFrom<$name> for usize {
+        //     type Error = String;
+        //     fn try_from(num: $name) -> std::result::Result<Self, Self::Error> {
+        //         let g: usize = num.0.try_into().map_err(|err:  std::num::TryFromIntError| err.to_string())?;
+        //         todo!()
+        //         // let num: $ty = num.try_into().map_err(|err:  std::num::TryFromIntError| err.to_string())?;
+        //         // Self::new(num).ok_or(format!("Max payload length: {}, But got {num}", $name::MAX))
+        //     }
+        // }
         impl From<$ty> for $name { fn from(num: $ty) -> Self { Self(num) } }
         impl core::ops::Deref for $name {
             type Target = $ty;
@@ -80,6 +89,20 @@ macro_rules! def {
     };
 }
 
+impl TryFrom<L2> for usize {
+    type Error = String;
+    fn try_from(num: L2) -> std::result::Result<Self, Self::Error> {
+        // let g: usize = {
+        //     match num.0.try_into() {
+        //         Ok(t) => Ok(t),
+        //         Err(e) => Err((|err| err.to_string())(e)),
+        //     }
+        // }?;
+        todo!()
+        // let num: $ty = num.try_into().map_err(|err:  std::num::TryFromIntError| err.to_string())?;
+        // Self::new(num).ok_or(format!("Max payload length: {}, But got {num}", $name::MAX))
+    }
+}
 def!(
     L2(u16),
     LenSize: 2,

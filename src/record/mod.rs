@@ -69,16 +69,7 @@ impl<L: LenType, T> DerefMut for Record<L, T> {
 
 // ---------------------------------------------------------------------------------
 
-// impl<'de, L: LenType> Decoder<'de> for Record<L, &'de [u8]>
-// where
-//     usize: TryFrom<L>,
-//     <usize as TryFrom<L>>::Error: fmt::Debug,
-// {
-//     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
-//         let len: usize = L::decoder(c)?.try_into().unwrap();
-//         get_slice(c, len).map(Record::new)
-//     }
-// }
+
 
 // impl<'de, L: LenType> Decoder<'de> for Record<L, &'de str>
 // where

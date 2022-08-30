@@ -3,16 +3,11 @@
 
 pub use bin_layout_derive::*;
 pub mod len;
-mod types;
 mod specialization;
+mod types;
 
-// pub mod record;
-// use record::*;
-
-// #[cfg(feature = "sizehint")]
-// mod size_hint;
-// #[cfg(feature = "sizehint")]
-// pub use size_hint::SizeHint;
+pub mod record;
+use record::*;
 
 use std::io::{Error, ErrorKind, Result, Write};
 
@@ -68,19 +63,12 @@ pub trait Decoder<'de>: Sized {
 
 // ------------------------------------------------------------
 
-fn invalid_data<E>(error: E) -> Error
-where
-    E: Into<Box<dyn std::error::Error + Send + Sync>>,
-{
+fn invalid_data<E: Into<Box<dyn std::error::Error + Send + Sync>>>(error: E) -> Error {
     Error::new(ErrorKind::InvalidData, error)
 }
-
-// fn invalid_input<E>(error: E) -> Error
-// where
-//     E: Into<Box<dyn std::error::Error + Send + Sync>>,
-// {
-//     Error::new(ErrorKind::InvalidInput, error)
-// }
+fn invalid_input<E: Into<Box<dyn std::error::Error + Send + Sync>>>(error: E) -> Error {
+    Error::new(ErrorKind::InvalidInput, error)
+}
 
 fn get_slice<'a>(this: &mut &'a [u8], len: usize) -> Result<&'a [u8]> {
     if len <= this.len() {

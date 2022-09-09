@@ -3,15 +3,14 @@
 
 pub use bin_layout_derive::*;
 pub mod len;
+mod record;
 mod types;
 
 #[cfg(feature = "nightly")]
 mod specialization;
 
-pub mod record;
-use record::*;
-
 use len::Len;
+pub use record::*;
 use std::io::{Error, ErrorKind, Result, Write};
 
 pub trait Encoder {

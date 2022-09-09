@@ -1,6 +1,6 @@
+use crate::*;
 mod collection;
 mod string;
-use super::*;
 
 use std::{
     fmt,
@@ -8,8 +8,8 @@ use std::{
     marker::PhantomData,
     ops::{Deref, DerefMut},
 };
-pub trait LenType: TryFrom<usize> + Encoder + for<'de> Decoder<'de> {}
 
+pub trait LenType: TryFrom<usize> + Encoder + for<'de> Decoder<'de> {}
 impl LenType for u8 {}
 impl LenType for u16 {}
 impl LenType for u32 {}
@@ -33,12 +33,13 @@ impl LenType for len::L3 {}
 /// assert_eq!(bytes.len(), 11);
 /// ```
 #[derive(Default, Clone)]
-pub struct Record<L: LenType, T> {
-    _marker: PhantomData<L>,
+pub struct Record<Len: LenType, T> {
+    _marker: PhantomData<Len>,
     pub data: T,
 }
 
-impl<L: LenType, T> Record<L, T> {
+impl<Len: LenType, T> Record<Len, T> {
+    #[inline]
     pub const fn new(data: T) -> Self {
         Self {
             data,
@@ -46,30 +47,36 @@ impl<L: LenType, T> Record<L, T> {
         }
     }
 }
-impl<L: LenType, T> From<T> for Record<L, T> {
+
+impl<Len: LenType, T> From<T> for Record<Len, T> {
+    #[inline]
     fn from(data: T) -> Self {
         Self::new(data)
     }
 }
 
-impl<L: LenType, T, V: FromIterator<T>> FromIterator<T> for Record<L, V> {
+impl<Len: LenType, T, V: FromIterator<T>> FromIterator<T> for Record<Len, V> {
+    #[inline]
     fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
         Record::new(V::from_iter(iter))
     }
 }
 
-impl<L: LenType, T: fmt::Debug> fmt::Debug for Record<L, T> {
+impl<Len: LenType, T: fmt::Debug> fmt::Debug for Record<Len, T> {
+    #[inline]
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.data.fmt(f)
     }
 }
-impl<L: LenType, T> Deref for Record<L, T> {
+impl<Len: LenType, T> Deref for Record<Len, T> {
     type Target = T;
+    #[inline]
     fn deref(&self) -> &Self::Target {
         &self.data
     }
 }
-impl<L: LenType, T> DerefMut for Record<L, T> {
+impl<Len: LenType, T> DerefMut for Record<Len, T> {
+    #[inline]
     fn deref_mut(&mut self) -> &mut Self::Target {
         &mut self.data
     }
@@ -82,67 +89,3 @@ macro_rules! encode_len {
     };
 }
 pub(crate) use encode_len;
-// ---------------------------------------------------------------------------------
-
-// impl<'de, L: LenType> Decoder<'de> for Record<L, &'de str>
-// where
-//     usize: TryFrom<L>,
-//     <usize as TryFrom<L>>::Error: fmt::Debug,
-// {
-//     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
-//         let bytes = <Record<L, &[u8]>>::decoder(c)?;
-//         core::str::from_utf8(bytes.data)
-//             .map_err(invalid_data)
-//             .map(Record::new)
-//     }
-// }
-// impl<L: LenType> Decoder<'_> for Record<L, String>
-// where
-//     usize: TryFrom<L>,
-//     <usize as TryFrom<L>>::Error: fmt::Debug,
-// {
-//     fn decoder(c: &mut &[u8]) -> Result<Self> {
-//         let bytes = <Record<L, &[u8]>>::decoder(c)?;
-//         String::from_utf8(bytes.data.to_vec())
-//             .map_err(invalid_data)
-//             .map(Record::new)
-//     }
-// }
-
-// #[cfg(feature = "sizehint")]
-// impl<L: LenType, T: SizeHint> SizeHint for Record<L, Vec<T>> {
-//     #[inline]
-//     fn size_hint(&self) -> usize {
-//         size_of::<L>() + self.iter().map(T::size_hint).sum::<usize>()
-//     }
-// }
-
-// impl<L, T: Encoder> Encoder for Record<L, Vec<T>>
-// where
-//     L: LenType,
-//     L::Error: fmt::Debug,
-// {
-//     #[inline]
-//     fn encoder(&self, c: &mut impl Write) -> Result<()> {
-//         let len: L = self.data.len().try_into().unwrap();
-//         len.encoder(c)?;
-//         self.data.iter().try_for_each(|item| item.encoder(c))
-//     }
-// }
-
-// impl<'de, L: LenType, T> Decoder<'de> for Record<L, Vec<T>>
-// where
-//     T: Decoder<'de>,
-//     usize: TryFrom<L>,
-//     <usize as TryFrom<L>>::Error: fmt::Debug,
-// {
-//     #[inline]
-//     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
-//         let len = L::decoder(c)?.try_into().unwrap();
-//         let mut vec = Vec::with_capacity(len);
-//         for _ in 0..len {
-//             vec.push(T::decoder(c)?);
-//         }
-//         Ok(Record::new(vec))
-//     }
-// }

@@ -42,7 +42,7 @@ impl Decoder<'_> for u8 {
     fn decoder(reader: &mut &[u8]) -> Result<Self> {
         if reader.len() > 0 {
             unsafe {
-                let slice = reader.get_unchecked(1);
+                let slice = reader.get_unchecked(0);
                 *reader = reader.get_unchecked(1..);
                 Ok(*slice)
             }

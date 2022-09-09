@@ -4,7 +4,6 @@ use std::{
     hash::{BuildHasher, Hash},
     marker::PhantomData,
 };
-
 macro_rules! impl_v2 {
     [Encoder for $name: ty where $($ty: tt)*] => {
         impl<$($ty)*> Encoder for $name { impl_v2! {@EncoderBody} }
@@ -19,7 +18,8 @@ macro_rules! impl_v2 {
         impl<'de, $($ty)*> Decoder<'de> for $name { impl_v2! {@DecoderBody} }
         impl<'de, Len: LenType,  $($ty)*> Decoder<'de> for Record<Len, $name>
         where
-            usize: From<Len>,
+            usize: TryFrom<Len>,
+            <usize as TryFrom<Len>>::Error: Into<DynErr>,
         {
             impl_v2! {@DecoderBody}
         }
@@ -77,16 +77,6 @@ impl_v2!(Decoder for HashMap<K, V, S>   where K: Decoder<'de> + Eq + Hash, V: De
 
 // --------------------------------------------------------------------------------
 
-// #[test]
-// fn test_name() {
-//     let mut map: Record<u8, HashMap<u8, &str>> = Record::new(HashMap::new());
-//     map.insert(1, "one");
-//     map.insert(2, "two");
-//     let data = &map.encode()[..];
-//     let f:  HashMap<u8, &str> = Decoder::decode(data).unwrap();
-//     // println!("{:?}", f);
-// }
-
 struct Iter<'err, 'c, 'de, T> {
     len: usize,
     err: &'err mut Option<std::io::Error>,
@@ -116,24 +106,3 @@ impl<'err, 'c, 'de, T: Decoder<'de>> Iterator for Iter<'err, 'c, 'de, T> {
         (self.len, Some(self.len))
     }
 }
-
-// impl<'de, Len: LenType, T: Decoder<'de>> Decoder<'de> for Record<Len, Vec<T>>
-// where
-//     usize: From<Len>,
-// {
-//     #[inline]
-//     fn decoder(cursor: &mut &'de [u8]) -> Result<Self> {
-//         let len = Len::decoder(cursor)?.try_into().map_err(invalid_input)?;
-//         let mut error = None;
-//         let out = Self::from_iter(Iter {
-//             len,
-//             err: &mut error,
-//             cursor,
-//             _marker: PhantomData,
-//         });
-//         match error {
-//             Some(err) => Err(err),
-//             None => Ok(out),
-//         }
-//     }
-// }

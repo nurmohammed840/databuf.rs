@@ -40,6 +40,7 @@
 //! ```
 
 use crate::*;
+use std::convert::{Infallible, TryFrom};
 
 #[cfg(feature = "L2")]
 pub use L2 as Len;
@@ -47,33 +48,29 @@ pub use L2 as Len;
 pub use L3 as Len;
 
 macro_rules! def {
-    [$name:ident($ty:ty), LenSize: $size:literal, MAX: $MAX:literal, $encoder:item, $decoder:item] => {
+    [$name:ident($ty:ty), LenSize: $size:literal, MAX: $MAX:literal, TryFromErr: $err: ty, $encoder:item, $decoder:item] => {
         #[derive(Default, Debug, Clone, Copy, PartialEq)]
-        pub struct $name($ty);
+        pub struct $name(pub $ty);
         impl $name {
             pub const SIZE: usize = $size;
             pub const MAX: $ty = $MAX;
-            pub const fn new(num: $ty) -> Option<Self> {
-                if num > Self::MAX { None }
-                else { Some(Self(num)) }
-            }
-            pub const unsafe fn new_unchecked(num: $ty) -> Self { Self(num) }
-            #[inline] pub fn into_inner(self) -> $ty { self.0 }
         }
         impl Encoder for $name { #[inline] $encoder }
         impl Decoder<'_> for $name { #[inline] $decoder }
         impl TryFrom<usize> for $name {
-            type Error = String;
-            fn try_from(num: usize) -> std::result::Result<Self, Self::Error> {
-                let num: $ty = num.try_into().map_err(|err:  std::num::TryFromIntError| err.to_string())?;
-                Self::new(num).ok_or(format!("Max payload length: {}, But got {num}", $name::MAX))
+            type Error = std::io::Error;
+            #[inline] fn try_from(num: usize) -> std::result::Result<Self, Self::Error> {
+                let num: $ty = num.try_into().map_err(invalid_data)?;
+                if num > Self::MAX {
+                    Err(invalid_data(format!("Max payload length: {}, But got {num}", $name::MAX)))
+                } else { 
+                    Ok(Self(num))
+                }
             }
         }
         impl TryFrom<$name> for usize {
-            type Error = std::io::Error;
-            #[inline] fn try_from(num: $name) -> Result<Self> {
-                num.0.try_into().map_err(invalid_data)
-            }
+            type Error = $err;
+            #[inline] fn try_from(num: $name) -> std::result::Result<Self, Self::Error> { TryFrom::try_from(num.0) }
         }
         impl From<$ty> for $name { fn from(num: $ty) -> Self { Self(num) } }
         impl core::ops::Deref for $name {
@@ -85,10 +82,12 @@ macro_rules! def {
         }
     };
 }
+
 def!(
     L2(u16),
     LenSize: 2,
     MAX: 0x7FFF,
+    TryFromErr: Infallible,
     fn encoder(&self, c: &mut impl Write) -> Result<()> {
         let num = self.0;
         let b1 = num as u8;
@@ -115,6 +114,7 @@ def!(
     L3(u32),
     LenSize: 3,
     MAX: 0x3FFFFF,
+    TryFromErr: std::num::TryFromIntError,
     fn encoder(&self, c: &mut impl Write) -> Result<()> {
         let num = self.0;
         let b1 = num as u8;

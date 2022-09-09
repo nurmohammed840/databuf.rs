@@ -3,14 +3,6 @@ use crate::*;
 macro_rules! impl_data_type_for_typle {
     [$(($($name: ident : $idx: tt),*)),*]  => (
         $(
-            #[cfg(feature = "sizehint")]
-            impl<$($name,)*> SizeHint for ($($name,)*)
-            where
-                $($name: SizeHint,)*
-            {
-                #[inline] fn size_hint(&self) -> usize { 0 $(+ self.$idx.size_hint())* }
-            }
-
             impl<$($name,)*> Encoder for ($($name,)*)
             where
                 $($name: Encoder,)*
@@ -50,10 +42,7 @@ impl<T: Encoder, const N: usize> Encoder for [T; N] {
     }
 }
 
-impl<'de, T, const N: usize> Decoder<'de> for [T; N]
-where
-    T: Decoder<'de>,
-{
+impl<'de, T: Decoder<'de>, const N: usize> Decoder<'de> for [T; N] {
     #[inline]
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
         #[cfg(feature = "nightly")]
@@ -66,14 +55,6 @@ where
             .map(|v| unsafe { v.try_into().unwrap_unchecked() });
     }
 }
-
-
-// impl<const N: usize> Encoder for &[u8; N] {
-//     #[inline]
-//     fn encoder(&self, writer: &mut impl Write) -> Result<()> {
-//         writer.write_all(self.as_slice())
-//     }
-// }
 
 impl<'de, const N: usize> Decoder<'de> for &'de [u8; N] {
     #[inline]

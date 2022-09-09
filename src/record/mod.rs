@@ -1,12 +1,13 @@
-mod zero_copy;
+mod collection;
+mod string;
 use super::*;
 
 use std::{
     fmt,
+    iter::FromIterator,
     marker::PhantomData,
     ops::{Deref, DerefMut},
 };
-
 pub trait LenType: TryFrom<usize> + Encoder + for<'de> Decoder<'de> {}
 
 impl LenType for u8 {}
@@ -50,6 +51,13 @@ impl<L: LenType, T> From<T> for Record<L, T> {
         Self::new(data)
     }
 }
+
+impl<L: LenType, T, V: FromIterator<T>> FromIterator<T> for Record<L, V> {
+    fn from_iter<I: IntoIterator<Item = T>>(iter: I) -> Self {
+        Record::new(V::from_iter(iter))
+    }
+}
+
 impl<L: LenType, T: fmt::Debug> fmt::Debug for Record<L, T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         self.data.fmt(f)
@@ -67,9 +75,14 @@ impl<L: LenType, T> DerefMut for Record<L, T> {
     }
 }
 
+macro_rules! encode_len {
+    [$data:expr, $c: expr] => {
+        let len: Len = $data.len().try_into().map_err(invalid_input)?;
+        len.encoder($c)?;
+    };
+}
+pub(crate) use encode_len;
 // ---------------------------------------------------------------------------------
-
-
 
 // impl<'de, L: LenType> Decoder<'de> for Record<L, &'de str>
 // where

@@ -1,14 +1,17 @@
 #![doc = include_str!("../README.md")]
-#![cfg_attr(feature = "nightly", feature(array_try_map))]
+#![cfg_attr(feature = "nightly", feature(array_try_map, min_specialization))]
 
 pub use bin_layout_derive::*;
 pub mod len;
-mod specialization;
 mod types;
+
+#[cfg(feature = "nightly")]
+mod specialization;
 
 pub mod record;
 use record::*;
 
+use len::Len;
 use std::io::{Error, ErrorKind, Result, Write};
 
 pub trait Encoder {
@@ -63,10 +66,12 @@ pub trait Decoder<'de>: Sized {
 
 // ------------------------------------------------------------
 
-fn invalid_data<E: Into<Box<dyn std::error::Error + Send + Sync>>>(error: E) -> Error {
+type DynErr = Box<dyn std::error::Error + Send + Sync>;
+
+fn invalid_data<E: Into<DynErr>>(error: E) -> Error {
     Error::new(ErrorKind::InvalidData, error)
 }
-fn invalid_input<E: Into<Box<dyn std::error::Error + Send + Sync>>>(error: E) -> Error {
+fn invalid_input<E: Into<DynErr>>(error: E) -> Error {
     Error::new(ErrorKind::InvalidInput, error)
 }
 
@@ -81,5 +86,3 @@ fn get_slice<'a>(this: &mut &'a [u8], len: usize) -> Result<&'a [u8]> {
         Err(Error::new(ErrorKind::UnexpectedEof, "Insufficient bytes"))
     }
 }
-
-// str, [T], String

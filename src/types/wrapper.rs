@@ -53,13 +53,14 @@ impl<T: Encoder> Encoder for RefCell<T> {
     }
 }
 
-impl Decoder<'_> for Box<str> {
-    fn decoder(c: &mut &[u8]) -> Result<Self> {
-        String::decoder(c).map(Box::from)
+impl<'de> Decoder<'de> for Box<str> {
+    fn decoder(c: &mut &'de [u8]) -> Result<Self> {
+        <&'de str>::decoder(c).map(Self::from)
     }
 }
+
 impl<'de, T: Decoder<'de>> Decoder<'de> for Box<[T]> {
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
-        Vec::decoder(c).map(Box::from)
+        Vec::<T>::decoder(c).map(Self::from)
     }
 }

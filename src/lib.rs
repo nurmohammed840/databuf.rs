@@ -1,17 +1,21 @@
 #![doc = include_str!("../README.md")]
 #![cfg_attr(feature = "nightly", feature(array_try_map, min_specialization))]
+#![feature(min_specialization)]
 
 pub use bin_layout_derive::*;
 pub mod len;
 mod record;
 mod types;
+mod utils;
 
-#[cfg(feature = "nightly")]
+// #[cfg(feature = "nightly")]
 mod specialization;
 
+use utils::*;
 use len::Len;
-pub use record::*;
 use std::io::{Error, ErrorKind, Result, Write};
+
+pub use record::*;
 
 pub trait Encoder {
     /// Serialize the data to binary format.
@@ -60,28 +64,5 @@ pub trait Decoder<'de>: Sized {
     fn decode(data: &'de [u8]) -> Result<Self> {
         let mut reader = data;
         Self::decoder(&mut reader)
-    }
-}
-
-// ------------------------------------------------------------
-
-type DynErr = Box<dyn std::error::Error + Send + Sync>;
-
-fn invalid_data<E: Into<DynErr>>(error: E) -> Error {
-    Error::new(ErrorKind::InvalidData, error)
-}
-fn invalid_input<E: Into<DynErr>>(error: E) -> Error {
-    Error::new(ErrorKind::InvalidInput, error)
-}
-
-fn get_slice<'a>(this: &mut &'a [u8], len: usize) -> Result<&'a [u8]> {
-    if len <= this.len() {
-        unsafe {
-            let slice = this.get_unchecked(..len);
-            *this = this.get_unchecked(len..);
-            Ok(slice)
-        }
-    } else {
-        Err(Error::new(ErrorKind::UnexpectedEof, "Insufficient bytes"))
     }
 }

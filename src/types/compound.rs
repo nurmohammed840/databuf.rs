@@ -1,3 +1,5 @@
+use std::{convert::TryFrom, iter::FromIterator};
+
 use crate::*;
 
 macro_rules! impl_data_type_for_typle {
@@ -44,15 +46,13 @@ impl<T: Encoder, const N: usize> Encoder for [T; N] {
 
 impl<'de, T: Decoder<'de>, const N: usize> Decoder<'de> for [T; N] {
     #[inline]
-    fn decoder(c: &mut &'de [u8]) -> Result<Self> {
+    fn decoder(cursor: &mut &'de [u8]) -> Result<Self> {
         #[cfg(feature = "nightly")]
         return [(); N].try_map(|_| T::decoder(c));
 
         #[cfg(not(feature = "nightly"))]
-        return (0..N)
-            .map(|_| T::decoder(c))
-            .collect::<Result<Vec<_>>>()
-            .map(|v| unsafe { v.try_into().unwrap_unchecked() });
+        return collect_from_iter(cursor, N)
+            .map(|vec: Vec<T>| unsafe { <[T; N]>::try_from(out).unwrap_unchecked() });
     }
 }
 
@@ -60,6 +60,6 @@ impl<'de, const N: usize> Decoder<'de> for &'de [u8; N] {
     #[inline]
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
         // SEAFTY: bytes.len() == N
-        get_slice(c, N).map(|bytes| unsafe { bytes.try_into().unwrap_unchecked() })
+        get_slice(c, N).map(|bytes| unsafe { <&[u8; N]>::try_from(bytes).unwrap_unchecked() })
     }
 }

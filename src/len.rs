@@ -48,12 +48,12 @@ pub use L2 as Len;
 pub use L3 as Len;
 
 macro_rules! def {
-    [$name:ident($ty:ty), LenSize: $size:literal, MAX: $MAX:literal, TryFromErr: $err: ty, $encoder:item, $decoder:item] => {
+    [$name:ident($ty:ty), SIZE: $SIZE:literal, MAX: $MAX:literal, TryFromErr: $err: ty, $encoder:item, $decoder:item] => {
         #[derive(Default, Debug, Clone, Copy, PartialEq)]
         pub struct $name(pub $ty);
         impl $name {
-            pub const SIZE: usize = $size;
             pub const MAX: $ty = $MAX;
+            pub const SIZE: usize = $SIZE;
         }
         impl Encoder for $name { #[inline] $encoder }
         impl Decoder<'_> for $name { #[inline] $decoder }
@@ -85,7 +85,7 @@ macro_rules! def {
 
 def!(
     L2(u16),
-    LenSize: 2,
+    SIZE: 2,
     MAX: 0x7FFF,
     TryFromErr: Infallible,
     fn encoder(&self, c: &mut impl Write) -> Result<()> {
@@ -110,9 +110,10 @@ def!(
         Ok(Self(num))
     }
 );
+
 def!(
     L3(u32),
-    LenSize: 3,
+    SIZE: 3,
     MAX: 0x3FFFFF,
     TryFromErr: std::num::TryFromIntError,
     fn encoder(&self, c: &mut impl Write) -> Result<()> {

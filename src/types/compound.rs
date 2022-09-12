@@ -1,4 +1,4 @@
-use std::{convert::TryFrom, iter::FromIterator};
+use std::convert::TryFrom;
 
 use crate::*;
 
@@ -47,12 +47,8 @@ impl<T: Encoder, const N: usize> Encoder for [T; N] {
 impl<'de, T: Decoder<'de>, const N: usize> Decoder<'de> for [T; N] {
     #[inline]
     fn decoder(cursor: &mut &'de [u8]) -> Result<Self> {
-        #[cfg(feature = "nightly")]
-        return [(); N].try_map(|_| T::decoder(c));
-
-        #[cfg(not(feature = "nightly"))]
-        return collect_from_iter(cursor, N)
-            .map(|vec: Vec<T>| unsafe { <[T; N]>::try_from(out).unwrap_unchecked() });
+        try_collect(cursor, N)
+            .map(|vec: Vec<T>| unsafe { <[T; N]>::try_from(vec).unwrap_unchecked() })
     }
 }
 

@@ -34,18 +34,13 @@ macro_rules! impl_v2 {
     [@DecoderBody] => {
         #[inline] fn decoder(c: &mut &'de [u8]) -> Result<Self> {
             let len = Len::decoder(c)?.try_into().map_err(invalid_input)?;
-            collect_from_iter(c, len)
+            try_collect(c, len)
         }
     };
 }
 
 impl<T: Encoder> Encoder for [T] {
-    // impl_v2! {@EncoderBody}
-    default fn encoder(&self, c: &mut impl Write) -> Result<()> {
-        let len: Len = self.len().try_into().map_err(invalid_input)?;
-        len.encoder(c)?;
-        self.iter().try_for_each(|item| item.encoder(c))
-    }
+    impl_v2! {@EncoderBody}
 }
 
 impl<Len: LenType, T: Encoder> Encoder for Record<Len, &[T]>
@@ -54,8 +49,6 @@ where
 {
     impl_v2! {@EncoderBody}
 }
-
-//--------------------------------------------------------------------
 
 impl_v2!(Encoder for Vec<T>             where T: Encoder);
 impl_v2!(Encoder for VecDeque<T>        where T: Encoder);

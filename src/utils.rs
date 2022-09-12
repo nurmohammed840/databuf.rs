@@ -22,11 +22,13 @@ pub fn get_slice<'a>(this: &mut &'a [u8], len: usize) -> Result<&'a [u8]> {
     }
 }
 
-// ---------------------------------------------------------------------------------
-
-pub fn collect_from_iter<A, T: FromIterator<A>>(cursor: &mut &[u8], len: usize) -> Result<T> {
+pub fn try_collect<'de, T, I>(cursor: &mut &'de [u8], len: usize) -> Result<I>
+where
+    T: Decoder<'de>,
+    I: FromIterator<T>,
+{
     let mut error = None;
-    let out = T::from_iter(Iter {
+    let out = I::from_iter(Iter {
         len,
         err: &mut error,
         cursor,
@@ -52,9 +54,11 @@ impl<'err, 'c, 'de, T: Decoder<'de>> Iterator for Iter<'err, 'c, 'de, T> {
         if self.len == 0 {
             return None;
         }
-        self.len -= 1;
         match T::decoder(self.cursor) {
-            Ok(val) => Some(val),
+            Ok(val) => {
+                self.len -= 1;
+                Some(val)
+            }
             Err(err) => {
                 self.len = 0;
                 *self.err = Some(err);

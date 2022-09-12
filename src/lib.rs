@@ -1,6 +1,8 @@
 #![doc = include_str!("../README.md")]
-#![cfg_attr(feature = "nightly", feature(array_try_map, min_specialization))]
-#![feature(min_specialization)]
+// #![cfg_attr(feature = "nightly", feature(min_specialization))]
+
+// #[cfg(feature = "nightly")]
+// mod specialization;
 
 pub use bin_layout_derive::*;
 pub mod len;
@@ -8,12 +10,9 @@ mod record;
 mod types;
 mod utils;
 
-// #[cfg(feature = "nightly")]
-mod specialization;
-
-use utils::*;
 use len::Len;
 use std::io::{Error, ErrorKind, Result, Write};
+use utils::*;
 
 pub use record::*;
 
@@ -32,7 +31,7 @@ pub trait Encoder {
     ///     bar: [u8; 2],
     /// }
     /// let foobar = FooBar { foo: 1, bar: [2, 3] }.encode();
-    /// assert_eq!(foobar, vec![1, 2, 3]);
+    /// assert_eq!(foobar, Ok(vec![1, 2, 3]));
     /// ```
     #[inline]
     fn encode(&self) -> Vec<u8> {

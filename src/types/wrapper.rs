@@ -1,4 +1,5 @@
 use std::{
+    borrow::Cow,
     cell::{Cell, RefCell},
     rc::Rc,
     sync::Arc,
@@ -10,19 +11,31 @@ macro_rules! impls {
     [Encoder for $($name:ty),*] => ($(
         impl<T: Encoder + ?Sized> Encoder for $name {
             #[inline]
-            fn encoder(&self, c: &mut impl Write) -> Result<()> { T::encoder(self, c) }
+            fn encoder(&self, c: &mut impl Write) -> Result<()> { (**self).encoder(c) }
         }
     )*);
     [Decoder for $($name:ident),*] => ($(
         impl<'de, T: Decoder<'de>> Decoder<'de> for $name<T> {
             #[inline]
-            fn decoder(c: &mut &'de [u8]) -> Result<Self> { T::decoder(c).map($name::from) }
+            fn decoder(c: &mut &'de [u8]) -> Result<Self> { T::decoder(c).map(Self::from) }
         }
     )*);
 }
 
 impls!(Encoder for &T, &mut T, Box<T>, Rc<T>, Arc<T>);
 impls!(Decoder for Box, Rc, Arc, Cell, RefCell);
+
+macro_rules! impl_sp {
+    [$($name: ident),*] => ($(
+        impl<'de> Decoder<'de> for $name<str> {
+            #[inline] fn decoder(c: &mut &'de [u8]) -> Result<Self> { <&'de str>::decoder(c).map(Self::from) }
+        }
+        impl<'de, T: Decoder<'de>> Decoder<'de> for $name<[T]> {
+            #[inline] fn decoder(c: &mut &'de [u8]) -> Result<Self> { Vec::<T>::decoder(c).map(Self::from) }
+        }
+    )*);
+}
+impl_sp!(Box, Rc, Arc);
 
 impl<T> Encoder for std::marker::PhantomData<T> {
     #[inline]
@@ -41,26 +54,33 @@ impl<T> Decoder<'_> for std::marker::PhantomData<T> {
 impl<T: Encoder + Copy> Encoder for Cell<T> {
     #[inline]
     fn encoder(&self, c: &mut impl Write) -> Result<()> {
-        T::encoder(&self.get(), c)
+        self.get().encoder(c)
     }
 }
 
 impl<T: Encoder> Encoder for RefCell<T> {
     #[inline]
     fn encoder(&self, c: &mut impl Write) -> Result<()> {
-        let val = self.try_borrow().map_err(invalid_input)?;
-        T::encoder(&val, c)
+        self.try_borrow().map_err(invalid_input)?.encoder(c)
     }
 }
 
-impl<'de> Decoder<'de> for Box<str> {
-    fn decoder(c: &mut &'de [u8]) -> Result<Self> {
-        <&'de str>::decoder(c).map(Self::from)
+impl<'a, T> Encoder for Cow<'a, T>
+where
+    T: ?Sized + Encoder + ToOwned,
+{
+    fn encoder(&self, c: &mut impl Write) -> Result<()> {
+        (**self).encoder(c)
     }
 }
 
-impl<'de, T: Decoder<'de>> Decoder<'de> for Box<[T]> {
+impl<'de, 'a, T: ?Sized> Decoder<'de> for Cow<'a, T>
+where
+    T: ToOwned,
+    T::Owned: Decoder<'de>,
+{
+    #[inline]
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
-        Vec::<T>::decoder(c).map(Self::from)
+        T::Owned::decoder(c).map(Cow::Owned)
     }
 }

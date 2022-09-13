@@ -9,7 +9,7 @@ macro_rules! impl_data_type_for_typle {
             where
                 $($name: Encoder,)*
             {
-                #[inline] fn encoder(&self, _c: &mut impl Write) -> Result<()> {
+                #[inline] fn encoder(&self, _c: &mut impl Write) -> io::Result<()> {
                     $(self.$idx.encoder(_c)?;)*
                     Ok(())
                 }
@@ -39,7 +39,7 @@ impl_data_type_for_typle!(
 
 impl<T: Encoder, const N: usize> Encoder for [T; N] {
     #[inline]
-    fn encoder(&self, c: &mut impl Write) -> Result<()> {
+    fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
         self.iter().try_for_each(|item| item.encoder(c))
     }
 }

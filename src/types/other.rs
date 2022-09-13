@@ -2,7 +2,7 @@ use crate::*;
 use std::ops::{Range, RangeInclusive};
 
 impl<T: Encoder> Encoder for Range<T> {
-    fn encoder(&self, c: &mut impl Write) -> Result<()> {
+    fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
         self.start.encoder(c)?;
         self.end.encoder(c)
     }
@@ -17,7 +17,7 @@ impl<'de, T: Decoder<'de>> Decoder<'de> for Range<T> {
 }
 
 impl<T: Encoder> Encoder for RangeInclusive<T> {
-    fn encoder(&self, c: &mut impl Write) -> Result<()> {
+    fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
         self.start().encoder(c)?;
         self.end().encoder(c)
     }

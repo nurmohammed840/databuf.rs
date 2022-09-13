@@ -1,7 +1,7 @@
 use crate::*;
 
 impl<T: Encoder> Encoder for Option<T> {
-    fn encoder(&self, c: &mut impl Write) -> Result<()> {
+    fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
         match self {
             Some(val) => {
                 c.write_all(&[1])?;
@@ -22,7 +22,7 @@ impl<'de, T: Decoder<'de>> Decoder<'de> for Option<T> {
 }
 
 impl<T: Encoder, E: Encoder> Encoder for std::result::Result<T, E> {
-    fn encoder(&self, c: &mut impl Write) -> Result<()> {
+    fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
         match self {
             Ok(val) => {
                 c.write_all(&[1])?;

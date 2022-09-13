@@ -106,7 +106,7 @@ pub fn decoder(input: TokenStream) -> TokenStream {
         impl <#lt, #ig> bin_layout::Decoder<'_de_> for #ident #ty_generics
         #where_clause
         {
-            fn decoder(c: &mut &'_de_ [u8]) -> std::io::Result<Self> {
+            fn decoder(c: &mut &'_de_ [u8]) -> std::result::Result<Self, std::boxed::Box<dyn std::error::Error + std::marker::Send + std::marker::Sync>> {
                 #body
             }
         }

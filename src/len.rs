@@ -58,7 +58,7 @@ macro_rules! def {
         impl Encoder for $name { #[inline] $encoder }
         impl Decoder<'_> for $name { #[inline] $decoder }
         impl TryFrom<usize> for $name {
-            type Error = std::io::Error;
+            type Error = DynErr;
             #[inline] fn try_from(num: usize) -> std::result::Result<Self, Self::Error> {
                 let num: $ty = num.try_into().map_err(invalid_data)?;
                 if num > Self::MAX.0 {
@@ -87,7 +87,7 @@ def!(
     L2(u16),
     BITS: 15,
     TryFromErr: Infallible,
-    fn encoder(&self, c: &mut impl Write) -> Result<()> {
+    fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
         let num = self.0;
         let b1 = num as u8;
         // No MSB is set, Bcs `num` is less then `128`
@@ -114,7 +114,7 @@ def!(
     L3(u32),
     BITS: 22,
     TryFromErr: std::num::TryFromIntError,
-    fn encoder(&self, c: &mut impl Write) -> Result<()> {
+    fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
         let num = self.0;
         let b1 = num as u8;
         if num < 128 { c.write_all(&[b1]) }

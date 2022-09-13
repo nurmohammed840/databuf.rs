@@ -1,7 +1,7 @@
 use crate::*;
 macro_rules! impl_encoder_fn {
     [$($data:tt)*] => (
-        #[inline] fn encoder(&self, c: &mut impl Write) -> Result<()> { 
+        #[inline] fn encoder(&self, c: &mut impl Write) -> io::Result<()> { 
             encode_len!(self $($data)*, c);
             c.write_all(self $($data)* .as_ref())
         }
@@ -15,7 +15,7 @@ macro_rules! impl_encoder_for {
         }
     )*};
     [$($data:tt)*] => (
-        #[inline] fn encoder(&self, c: &mut impl Write) -> Result<()> { 
+        #[inline] fn encoder(&self, c: &mut impl Write) -> io::Result<()> { 
             encode_len!(self $($data)*, c);
             c.write_all(self $($data)* .as_ref())
         }

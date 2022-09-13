@@ -2,7 +2,7 @@ use crate::*;
 
 impl Encoder for bool {
     #[inline]
-    fn encoder(&self, writer: &mut impl Write) -> Result<()> {
+    fn encoder(&self, writer: &mut impl Write) -> io::Result<()> {
         writer.write_all(&[*self as u8])
     }
 }
@@ -16,7 +16,7 @@ impl Decoder<'_> for bool {
 
 impl Encoder for char {
     #[inline]
-    fn encoder(&self, c: &mut impl Write) -> Result<()> {
+    fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
         u32::from(*self).encoder(c)
     }
 }
@@ -32,7 +32,7 @@ impl Decoder<'_> for char {
 
 impl Encoder for u8 {
     #[inline]
-    fn encoder(&self, writer: &mut impl Write) -> Result<()> {
+    fn encoder(&self, writer: &mut impl Write) -> io::Result<()> {
         writer.write_all(&[*self])
     }
 }
@@ -47,14 +47,14 @@ impl Decoder<'_> for u8 {
                 Ok(*slice)
             }
         } else {
-            Err(Error::new(ErrorKind::UnexpectedEof, "Insufficient bytes"))
+            Err(invalid_data("Insufficient bytes"))
         }
     }
 }
 
 impl Encoder for i8 {
     #[inline]
-    fn encoder(&self, writer: &mut impl Write) -> Result<()> {
+    fn encoder(&self, writer: &mut impl Write) -> io::Result<()> {
         writer.write_all(&[*self as u8])
     }
 }
@@ -67,7 +67,7 @@ impl Decoder<'_> for i8 {
 macro_rules! impl_data_type_for {
     [$($rty:ty)*] => ($(
         impl Encoder for $rty {
-            #[inline] fn encoder(&self, writer: &mut impl Write) -> Result<()> {
+            #[inline] fn encoder(&self, writer: &mut impl Write) -> io::Result<()> {
                 #[cfg(not(any(feature = "BE", feature = "NE")))]
                 return writer.write_all(&self.to_le_bytes());
                 #[cfg(feature = "BE")]

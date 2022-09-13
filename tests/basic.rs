@@ -18,7 +18,7 @@
 //             _ => 2,
 //         }
 //     }
-//     fn encoder(&self, w: &mut impl Write) -> Result<()> {
+//     fn encoder(&self, w: &mut impl Write) -> io::Result<()> {
 //         let code: u16 = match *self {
 //             Math => 302,
 //             Physics => 317,
@@ -60,7 +60,7 @@
 // }
 
 // #[test]
-// fn basic() -> Result<()> {
+// fn basic() -> io::Result<()> {
 //     let old_class = Class {
 //         name: "Mango",
 //         subjects: [Physics, Chemistry, Other(321, "Engish II".into()), Math],

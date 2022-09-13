@@ -1,16 +1,14 @@
 use crate::*;
 use std::iter::FromIterator;
 
-type DynErr = Box<dyn std::error::Error + Send + Sync>;
-
 #[inline]
-pub fn invalid_data(error: impl Into<DynErr>) -> Error {
-    Error::new(ErrorKind::InvalidData, error)
+pub fn invalid_data(err: impl Into<DynErr>) -> DynErr {
+    err.into()
 }
 
 #[inline]
-pub fn invalid_input(error: impl Into<DynErr>) -> Error {
-    Error::new(ErrorKind::InvalidInput, error)
+pub fn invalid_input(error: impl Into<DynErr>) -> io::Error {
+    io::Error::new(io::ErrorKind::InvalidInput, error)
 }
 
 #[inline]
@@ -22,7 +20,7 @@ pub fn get_slice<'a>(this: &mut &'a [u8], len: usize) -> Result<&'a [u8]> {
             Ok(slice)
         }
     } else {
-        Err(Error::new(ErrorKind::UnexpectedEof, "Insufficient bytes"))
+        Err(invalid_data("Insufficient bytes"))
     }
 }
 
@@ -47,7 +45,7 @@ where
 
 pub struct Iter<'err, 'c, 'de, T> {
     len: usize,
-    err: &'err mut Option<Error>,
+    err: &'err mut Option<DynErr>,
     cursor: &'c mut &'de [u8],
     _marker: std::marker::PhantomData<T>,
 }

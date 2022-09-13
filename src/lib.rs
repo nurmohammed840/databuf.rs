@@ -8,14 +8,17 @@ mod types;
 mod utils;
 
 use len::*;
-use std::io::{Error, ErrorKind, Result, Write};
+use std::io::{self, Write};
 use utils::*;
 
 pub use record::*;
 
+type DynErr = Box<dyn std::error::Error + Send + Sync>;
+type Result<T> = std::result::Result<T, DynErr>;
+
 pub trait Encoder {
     /// Serialize the data to binary format.
-    fn encoder(&self, _: &mut impl Write) -> Result<()>;
+    fn encoder(&self, _: &mut impl Write) -> io::Result<()>;
 
     /// ### Example
     ///

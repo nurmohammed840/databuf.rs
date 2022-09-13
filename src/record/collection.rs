@@ -18,7 +18,7 @@ macro_rules! impl_v2 {
         }
     };
     [@EncoderBody] => {
-        #[inline] fn encoder(&self, c: &mut impl Write) -> Result<()> {
+        #[inline] fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
             encode_len!(self, c);
             self.iter().try_for_each(|item| item.encoder(c))
         }

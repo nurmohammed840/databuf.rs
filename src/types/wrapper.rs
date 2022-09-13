@@ -11,7 +11,7 @@ macro_rules! impls {
     [Encoder for $($name:ty),*] => ($(
         impl<T: Encoder + ?Sized> Encoder for $name {
             #[inline]
-            fn encoder(&self, c: &mut impl Write) -> Result<()> { (**self).encoder(c) }
+            fn encoder(&self, c: &mut impl Write) -> io::Result<()> { (**self).encoder(c) }
         }
     )*);
     [Decoder for $($name:ident),*] => ($(
@@ -39,7 +39,7 @@ impl_sp!(Box, Rc, Arc);
 
 impl<T> Encoder for std::marker::PhantomData<T> {
     #[inline]
-    fn encoder(&self, _: &mut impl Write) -> Result<()> {
+    fn encoder(&self, _: &mut impl Write) -> io::Result<()> {
         Ok(())
     }
 }
@@ -53,14 +53,14 @@ impl<T> Decoder<'_> for std::marker::PhantomData<T> {
 
 impl<T: Encoder + Copy> Encoder for Cell<T> {
     #[inline]
-    fn encoder(&self, c: &mut impl Write) -> Result<()> {
+    fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
         self.get().encoder(c)
     }
 }
 
 impl<T: Encoder> Encoder for RefCell<T> {
     #[inline]
-    fn encoder(&self, c: &mut impl Write) -> Result<()> {
+    fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
         self.try_borrow().map_err(invalid_input)?.encoder(c)
     }
 }
@@ -69,7 +69,7 @@ impl<'a, T> Encoder for Cow<'a, T>
 where
     T: ?Sized + Encoder + ToOwned,
 {
-    fn encoder(&self, c: &mut impl Write) -> Result<()> {
+    fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
         (**self).encoder(c)
     }
 }

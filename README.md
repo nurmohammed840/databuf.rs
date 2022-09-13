@@ -2,8 +2,6 @@
 
 Very fast! And flexible, This library used to serialize and deserialize data in binary format.
 
-Inspaired by [bincode](https://github.com/bincode-org/bincode), But much more flexible.
-
 ### [Endianness](https://en.wikipedia.org/wiki/Endianness)
 
 By default, the library uses little endian.
@@ -11,19 +9,19 @@ If you want to use big endian, you can set `BE` features flag. And for native en
 
 ```toml
 [dependencies]
-bin-layout = { version = "6", features = ["BE"] }
+bin-layout = { version = "7", features = ["BE"] }
 ```
 
-### Example
+### Examples
 
 ```rust
 use bin_layout::*;
 
 #[derive(Encoder, Decoder)]
 struct Car<'a> {
-    name: &'a str,
     year: u16,
     is_new: bool,
+    name: &'a str,
 }
 
 #[derive(Encoder, Decoder)]
@@ -36,109 +34,73 @@ let old = Company {
         Car { name: "Model X", year: 2019, is_new: false },
     ],
 };
-
 let bytes = old.encode();
 let new = Company::decode(&bytes);
 ```
 
-There is two main reasons for this library to exists. 
-
-### 1. 🚀 Performance 🚀  
-
-- Zero-copy deserialization: Its mean that no data is copied. Instead, the data is referenced.
+- Zero-copy deserialization: mean that no data is copied. Dynamic length data (`Vec`, `String`, `&[T]`, `&str` etc..) are encoded with their length value first, Following by each entry.
     
-    ```rust
-    use bin_layout::*;
+```rust
+use bin_layout::*;
 
-    #[derive(Encoder, Decoder)]
-    struct Msg<'a> {
-        id: u8,
-        data: &'a str,
-    }
-    let bytes = [42, 13, 72, 101, 108, 108, 111, 44, 32, 87, 111, 114, 108, 100, 33];
-    //           ^^  ^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-    //           Id  Len                         Data
+#[derive(Encoder, Decoder)]
+struct Msg<'a> {
+    id: u8,
+    data: &'a str,
+}
+let bytes = [42, 13, 72, 101, 108, 108, 111, 44, 32, 87, 111, 114, 108, 100, 33];
+//           ^^  ^^  ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+//           Id  Len                         Data
 
-    let msg = Msg::decode(&bytes).unwrap();
-    assert_eq!(msg.id, 42);
-    assert_eq!(msg.data, "Hello, World!"); // Here, data is referenced.
-    ```
+let msg = Msg::decode(&bytes).unwrap();
+assert_eq!(msg.id, 42);
+assert_eq!(msg.data, "Hello, World!"); // Here, data is referenced.
+```
 
-- Compile time allocation:
-
-    What if the data is fixed size? Then we don't need to allocate any memory at runtime.
-
-    For example, The following structs, don't have any dynamic data. So we can have a fixed size buffer at compile time.
-
-    ```rust
-    use bin_layout::*;
-    use stack_array::ArrayBuf;
-
-    #[derive(Encoder, Decoder)]
-    struct Date {
-        year: u16,
-        month: u8,
-        day: u8,
-    }
-    #[derive(Encoder, Decoder)]
-    struct Record {
-        id: u32,
-        date: Date,
-        value: [u8; 512],
-    }
-
-    let record = Record { id: 1, date: Date { year: 2018, month: 1, day: 1 }, value: [0; 512] };
-
-    let mut arr: ArrayBuf<u8, {Record::SIZE}> = ArrayBuf::new(); // 520 bytes uninitialized memory
-    record.encoder(&mut arr);
-    assert_eq!(arr.len(), Record::SIZE);
-    ```
-
-    What happens if we have a dynamic data (like vector, string, etc...) ? Then we have to allocate memory at runtime.
-    
-    But how much memory we need to store the whole data ? When a vector is full, It creates a new vector with larger size, Then move all data to the new vector. Which is expensive.
-
-    Well, Encoder has a method called `size_hint`, which calculates the total size of the data at runtime. Which is cheap to compute. `encode` method use `size_hint` function internaly.
-
-    For example:
-
-    ```rust
-    use bin_layout::*;
-
-    #[derive(Encoder, Decoder)]
-    struct Student {
-        roll: u32,
-        name: String, // Here we have a dynamic data.
-    }
-
-    let bytes = Student { roll: 42, name: "Jui".into() }.encode();
-    ```
-
-
-###  Flexibility
-
-It work by mantaining a [Cursor](https://docs.rs/bin-layout/latest/bin_layout/struct.Cursor.html). Which is a pointer to the current position in the buffer.
-And the cursor is updated when reading or writing data to the buffer.
-
-It's very easy to implement a custom serializer/deserializer for your own data type.
-
-For example:
+- In this example, The following structs, don't have any dynamic length data. So we can have a fixed size buffer at compile time.
 
 ```rust
 use bin_layout::*;
+
+#[derive(Encoder, Decoder)]
+struct Date {
+    year: u16,
+    month: u8,
+    day: u8,
+}
+
+#[derive(Encoder, Decoder)]
+struct Record {
+    id: u32,
+    date: Date,
+    value: [u8; 512],
+}
+
+let record = Record { id: 42, date: Date { year: 2018, month: 3, day: 7 }, value: [1; 512] };
+let mut writer = [0; 520];
+record.encoder(&mut writer.as_mut_slice());
+```
+
+- It's very easy to implement `Encoder` or `Decoder` trait. For example:
+
+```rust
+use std::io;
+use bin_layout::*;
+
+type DynErr = Box<dyn std::error::Error + Send + Sync>;
 
 #[derive(Encoder, Decoder)]
 struct Bar(u16);
 struct Foo { x: u8, y: Bar }
 
 impl Encoder for Foo {
-    fn encoder(&self, c: &mut impl Array<u8>) {
-        self.x.encoder(c);
-        self.y.encoder(c);
+    fn encoder(&self, c: &mut impl io::Write) -> io::Result<()> {
+        self.x.encoder(c)?;
+        self.y.encoder(c)
     }
 }
 impl Decoder<'_> for Foo {
-    fn decoder(c: &mut Cursor<&[u8]>) -> Result<Self, &'static str> {
+    fn decoder(c: &mut &[u8]) -> Result<Self, DynErr> {
         Ok(Self {
             x: u8::decoder(c)?,
             y: Bar::decoder(c)?,
@@ -147,17 +109,11 @@ impl Decoder<'_> for Foo {
 }
 ```
 
-### Encoder, Decoder
-
-All [primitive types](https://doc.rust-lang.org/stable/rust-by-example/primitives.html) implement this trait.
-
-`Vec`, `String`, `&[T]`, `&str` etc.. are encoded with their length value first, Following by each entry.
-
 #### Variable-Length Integer Encoding
 
 This encoding ensures that smaller integer values need fewer bytes to encode. Support types are `L2` and `L3`, both are encoded in little endian.
 
-By default, `L2` (u15) is used to encode length (integer) for record. But you override it by setting `L3` (u22) in features flag.
+By default, `L3` (u22) is used to encode length (integer) for record. But you override it by setting `L2` (u15) in features flag.
  
 Encoding algorithm is very straightforward, reserving one or two most significant bits of the first byte to encode rest of the length.
 
@@ -193,8 +149,9 @@ Another example, `L3(107)` is encoded in just 1 byte:
 1st byte: 0_1101011      # MSB is 0, So we don't have to read extra bytes.
 ```
 
-#### Fixed-Length Integer Encoding
+#### Fixed-Length Collections
 
-[Record](https://docs.rs/bin-layout/latest/bin_layout/struct.Record.html) can be used to represent fixed-size integer to represent the length of a record.
+[Record](https://docs.rs/bin-layout/latest/bin_layout/struct.Record.html) can be used to 
+encode collections where the size of the length is known. 
 
-It accepts fixed-length unsigned interger type of `N` (`u8`, `u32`, `usize`, etc..) and a generic type of `T` (`Vec<T>`, `String` etc..)
+For example, `Record<u8, String>` here the maximum allowed payload length is 255 (`u8::MAX`)

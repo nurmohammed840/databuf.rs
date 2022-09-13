@@ -13,19 +13,20 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-/// `Record` can be used to represent fixed-size integer to represent the length of a record.
+/// [Record](https://docs.rs/bin-layout/latest/bin_layout/struct.Record.html) can be used to
+/// encode collections where the size of the length is known.
 ///
-/// It accepts fixed-length unsigned interger type of `N` (`u8`, `u32`, `usize`, etc..) and a generic type of `T` (`Vec<T>`, `String` etc..)
+/// For example, `Record<u8, String>` here the maximum allowed payload length is 255 (`u8::MAX`)
+///
 /// ### Example
 ///
 /// ```rust
-/// use bin_layout::{Record, Encoder};
+/// use bin_layout::*;
 ///
-/// let record: Record<u8, &str> = "HelloWorld".into();
-/// assert_eq!(record.len(), 10);
-///
+/// let record: Record<u8, String> = "very long string!".repeat(15).into();
 /// let bytes = record.encode();
-/// assert_eq!(bytes.len(), 11);
+/// assert_eq!(record.len(), 255);
+/// assert_eq!(bytes.len(), 256);
 /// ```
 #[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Record<Len: LenType, T> {
@@ -77,8 +78,7 @@ impl<Len: LenType, T> DerefMut for Record<Len, T> {
     }
 }
 
-// -----------------------------------------------------------------------
-
+/// Supported length type for [Record](https://docs.rs/bin-layout/latest/bin_layout/struct.Record.html)
 pub trait LenType:
     fmt::Display + TryFrom<usize> + TryInto<usize> + Encoder + for<'de> Decoder<'de>
 {

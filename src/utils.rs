@@ -7,11 +7,11 @@ pub fn invalid_input(error: impl Into<DynErr>) -> io::Error {
 }
 
 #[inline]
-pub fn get_slice<'a>(this: &mut &'a [u8], len: usize) -> Result<&'a [u8]> {
-    if len <= this.len() {
+pub fn get_slice<'a>(remaining: &mut &'a [u8], len: usize) -> Result<&'a [u8]> {
+    if len <= remaining.len() {
         unsafe {
-            let slice = this.get_unchecked(..len);
-            *this = this.get_unchecked(len..);
+            let slice = remaining.get_unchecked(..len);
+            *remaining = remaining.get_unchecked(len..);
             Ok(slice)
         }
     } else {

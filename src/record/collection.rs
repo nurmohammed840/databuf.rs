@@ -7,15 +7,11 @@ use std::{
 macro_rules! impl_v2 {
     [Encoder for $name: ty where $($ty: tt)*] => {
         impl<$($ty)*> Encoder for $name { impl_v2! {@EncoderBody} }
-        impl<Len: LenType, $($ty)*> Encoder for Record<Len, $name> {
-            impl_v2! {@EncoderBody}
-        }
+        impl<Len: LenType, $($ty)*> Encoder for Record<Len, $name> { impl_v2! {@EncoderBody} }
     };
     [Decoder for $name: ty where $($ty: tt)*] => {
         impl<'de, $($ty)*> Decoder<'de> for $name { impl_v2! {@DecoderBody} }
-        impl<'de, Len: LenType,  $($ty)*> Decoder<'de> for Record<Len, $name> {
-            impl_v2! {@DecoderBody}
-        }
+        impl<'de, Len: LenType,  $($ty)*> Decoder<'de> for Record<Len, $name> { impl_v2! {@DecoderBody} }
     };
     [@EncoderBody] => {
         #[inline] fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
@@ -34,7 +30,6 @@ macro_rules! impl_v2 {
 impl<T: Encoder> Encoder for [T] {
     impl_v2! {@EncoderBody}
 }
-
 impl<Len: LenType, T: Encoder> Encoder for Record<Len, &[T]> {
     impl_v2! {@EncoderBody}
 }

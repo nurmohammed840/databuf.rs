@@ -24,7 +24,7 @@ impl Decoder<'_> for char {
     #[inline]
     fn decoder(c: &mut &[u8]) -> Result<Self> {
         let num = u32::decoder(c)?;
-        char::from_u32(num).ok_or(format!("{num} is not a valid char").into())
+        char::from_u32(num).ok_or_else(|| format!("{num} is not a valid char").into())
     }
 }
 
@@ -40,7 +40,7 @@ impl Encoder for u8 {
 impl Decoder<'_> for u8 {
     #[inline]
     fn decoder(reader: &mut &[u8]) -> Result<Self> {
-        if reader.len() > 0 {
+        if !reader.is_empty() {
             unsafe {
                 let slice = reader.get_unchecked(0);
                 *reader = reader.get_unchecked(1..);

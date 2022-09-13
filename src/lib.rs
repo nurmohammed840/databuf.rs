@@ -16,8 +16,9 @@ pub use record::*;
 type DynErr = Box<dyn std::error::Error + Send + Sync>;
 type Result<T> = std::result::Result<T, DynErr>;
 
+/// This trait used to serialize the data structure into binary format.
 pub trait Encoder {
-    /// Serialize the data to binary format.
+    /// Serialize the data into binary format.
     fn encoder(&self, _: &mut impl Write) -> io::Result<()>;
 
     /// ### Example
@@ -30,8 +31,8 @@ pub trait Encoder {
     ///     foo: u8,
     ///     bar: [u8; 2],
     /// }
-    /// let foobar = FooBar { foo: 1, bar: [2, 3] }.encode();
-    /// assert_eq!(foobar, Ok(vec![1, 2, 3]));
+    /// let bytes = FooBar { foo: 1, bar: [2, 3] }.encode();
+    /// assert_eq!(bytes, vec![1, 2, 3]);
     /// ```
     #[inline]
     fn encode(&self) -> Vec<u8> {
@@ -41,6 +42,7 @@ pub trait Encoder {
     }
 }
 
+/// This trait used to deserialize the data structure from binary format.
 pub trait Decoder<'de>: Sized {
     /// Deserialize the data from binary format.
     fn decoder(_: &mut &'de [u8]) -> Result<Self>;

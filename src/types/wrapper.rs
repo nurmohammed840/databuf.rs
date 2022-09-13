@@ -1,11 +1,10 @@
+use crate::*;
 use std::{
     borrow::Cow,
     cell::{Cell, RefCell},
     rc::Rc,
     sync::Arc,
 };
-
-use crate::*;
 
 macro_rules! impls {
     [Encoder for $($name:ty),*] => ($(

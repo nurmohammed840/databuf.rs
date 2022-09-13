@@ -1,8 +1,8 @@
 //! ### Variable-Length Integer Encoding
 //!
-//! This encoding ensures that smaller integer values need fewer bytes to encode. Support types are `L2` and `L3`.
+//! This encoding ensures that smaller integer values need fewer bytes to encode. Support types are `L2` and `L3`, both are encoded in little endian.
 //!
-//! By default, `L2` (u15) is used to encode length (integer) for record. But you override it by setting `L3` (u22) in features flag.
+//! By default, `L3` (u22) is used to encode length (integer) for record. But you override it by setting `L2` (u15) in features flag.
 //!  
 //! Encoding algorithm is very straightforward, reserving one or two most significant bits of the first byte to encode rest of the length.
 //!
@@ -12,7 +12,6 @@
 //! | :---: | :----: | :---------: | :------- |
 //! |   0   |   1    |      7      | 0..127   |
 //! |   1   |   2    |     15      | 0..32767 |
-//!
 //!
 //! #### L3
 //!
@@ -27,7 +26,7 @@
 //!  
 //! `L3(0x_C0DE)` is encoded in 3 bytes:
 //!  
-//! ```text
+//! ```yml
 //! 1st byte: 11_011110      # MSB is 11, so read next 2 bytes
 //! 2nd byte:        11
 //! 3rd byte:        11
@@ -35,12 +34,15 @@
 //!
 //! Another example, `L3(107)` is encoded in just 1 byte:
 //!
-//! ```text
-//! 1st byte: 0_1101011      # MSB is 0, So we don't have to read another bytes.
+//! ```yml
+//! 1st byte: 0_1101011      # MSB is 0, So we don't have to read extra bytes.
 //! ```
 
 use crate::*;
-use std::{convert::{Infallible, TryFrom}, fmt};
+use std::{
+    convert::{Infallible, TryFrom},
+    fmt,
+};
 
 #[cfg(feature = "L2")]
 pub use L2 as Len;
@@ -49,7 +51,7 @@ pub use L3 as Len;
 
 macro_rules! def {
     [$name:ident($ty:ty), BITS: $BITS:literal, TryFromErr: $err: ty, $encoder:item, $decoder:item] => {
-        #[derive(Default, Debug, Clone, Copy, PartialEq)]
+        #[derive(Default, Debug, Clone, Copy, PartialEq, Eq)]
         pub struct $name(pub $ty);
         impl $name {
             pub const MAX: $name = $name((1 << $BITS) - 1);
@@ -168,8 +170,6 @@ mod tests {
 
     #[test]
     fn l2() {
-        assert_eq!(L2::MAX.0, (1 << 15) - 1);
-
         assert_len!(L2(0), [0]);
         assert_len!(L2(127), [127]);
 
@@ -179,8 +179,6 @@ mod tests {
 
     #[test]
     fn l3() {
-        assert_eq!(L3::MAX.0, (1 << 22) - 1);
-
         assert_len!(L3(0), [0]);
         assert_len!(L3(127), [127]);
 

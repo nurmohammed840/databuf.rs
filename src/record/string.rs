@@ -1,7 +1,7 @@
 use crate::*;
 macro_rules! impl_encoder_fn {
     [$($data:tt)*] => (
-        #[inline] fn encoder(&self, c: &mut impl Write) -> io::Result<()> { 
+        #[inline] fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
             encode_len!(self $($data)*, c);
             c.write_all(self $($data)* .as_ref())
         }
@@ -10,12 +10,10 @@ macro_rules! impl_encoder_fn {
 macro_rules! impl_encoder_for {
     [$($ty:ty; $rec_ty:ty),*] => {$(
         impl Encoder for $ty { impl_encoder_fn!(); }
-        impl<Len: LenType> Encoder for $rec_ty {
-            impl_encoder_fn!(.data);
-        }
+        impl<Len: LenType> Encoder for $rec_ty { impl_encoder_fn!(.data); }
     )*};
     [$($data:tt)*] => (
-        #[inline] fn encoder(&self, c: &mut impl Write) -> io::Result<()> { 
+        #[inline] fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
             encode_len!(self $($data)*, c);
             c.write_all(self $($data)* .as_ref())
         }

@@ -36,11 +36,7 @@ impl<T: Encoder, E: Encoder> Encoder for std::result::Result<T, E> {
     }
 }
 
-impl<'de, T, E> Decoder<'de> for std::result::Result<T, E>
-where
-    T: Decoder<'de>,
-    E: Decoder<'de>,
-{
+impl<'de, T: Decoder<'de>, E: Decoder<'de>> Decoder<'de> for std::result::Result<T, E> {
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
         Ok(match bool::decoder(c)? {
             true => Ok(T::decoder(c)?),

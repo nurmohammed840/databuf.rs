@@ -3,28 +3,25 @@ use std::convert::TryFrom;
 use crate::*;
 
 macro_rules! impl_data_type_for_typle {
-    [$(($($name: ident : $idx: tt),*)),*]  => (
-        $(
-            impl<$($name,)*> Encoder for ($($name,)*)
-            where
-                $($name: Encoder,)*
-            {
-                #[inline] fn encoder(&self, _c: &mut impl Write) -> io::Result<()> {
-                    $(self.$idx.encoder(_c)?;)*
-                    Ok(())
-                }
+    [$(($($name: ident : $idx: tt),*)),*]  => ($(
+        impl<$($name,)*> Encoder for ($($name,)*)
+        where
+            $($name: Encoder,)*
+        {
+            #[inline] fn encoder(&self, _c: &mut impl Write) -> io::Result<()> {
+                $(self.$idx.encoder(_c)?;)*
+                Ok(())
             }
-
-            impl<'de, $($name,)*> Decoder<'de> for ($($name,)*)
-            where
-                $($name: Decoder<'de>,)*
-            {
-                #[inline] fn decoder(_c: &mut &'de [u8]) -> Result<Self> {
-                    Ok(($($name::decoder(_c)?),*))
-                }
+        }
+        impl<'de, $($name,)*> Decoder<'de> for ($($name,)*)
+        where
+            $($name: Decoder<'de>,)*
+        {
+            #[inline] fn decoder(_c: &mut &'de [u8]) -> Result<Self> {
+                Ok(($($name::decoder(_c)?),*))
             }
-        )*
-    );
+        }
+    )*);
 }
 
 impl_data_type_for_typle!(

@@ -40,7 +40,7 @@
 //! ```
 
 use crate::*;
-use std::convert::{Infallible, TryFrom};
+use std::{convert::{Infallible, TryFrom}, fmt};
 
 #[cfg(feature = "L2")]
 pub use L2 as Len;
@@ -58,13 +58,12 @@ macro_rules! def {
         impl Encoder for $name { #[inline] $encoder }
         impl Decoder<'_> for $name { #[inline] $decoder }
         impl TryFrom<usize> for $name {
-            type Error = DynErr;
+            type Error = String;
             #[inline] fn try_from(num: usize) -> std::result::Result<Self, Self::Error> {
-                let num: $ty = num.try_into().map_err(invalid_data)?;
-                if num > Self::MAX.0 {
-                    Err(invalid_data(format!("Max payload length: {}, But got {num}", Self::MAX.0)))
+                if num > (1 << $BITS) - 1 {
+                    Err(format!("Max payload length is {}, But got {num}", Self::MAX.0))
                 } else {
-                    Ok(Self(num))
+                    Ok(Self(num as $ty))
                 }
             }
         }
@@ -73,6 +72,9 @@ macro_rules! def {
             #[inline] fn try_from(num: $name) -> std::result::Result<Self, Self::Error> { TryFrom::try_from(num.0) }
         }
         impl From<$ty> for $name { fn from(num: $ty) -> Self { Self(num) } }
+        impl fmt::Display for $name {
+            #[inline] fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result { self.0.fmt(f) }
+        }
         impl core::ops::Deref for $name {
             type Target = $ty;
             #[inline] fn deref(&self) -> &Self::Target { &self.0 }
@@ -144,7 +146,6 @@ def!(
         } else  {
             // At this point, only possible first 2 bits are `11`
             let [b2, b3] = <&[u8; 2]>::decoder(c)?;
-
             (num & 0x3F)  // get last 6 bits
             | (*b2 as u32) << 6     // add 8 bits from 2nd byte
             | (*b3 as u32) << 14    // add 8 bits from 3rd byte

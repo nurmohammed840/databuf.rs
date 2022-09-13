@@ -2,11 +2,6 @@ use crate::*;
 use std::iter::FromIterator;
 
 #[inline]
-pub fn invalid_data(err: impl Into<DynErr>) -> DynErr {
-    err.into()
-}
-
-#[inline]
 pub fn invalid_input(error: impl Into<DynErr>) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidInput, error)
 }
@@ -20,7 +15,7 @@ pub fn get_slice<'a>(this: &mut &'a [u8], len: usize) -> Result<&'a [u8]> {
             Ok(slice)
         }
     } else {
-        Err(invalid_data("Insufficient bytes"))
+        Err("Insufficient bytes".into())
     }
 }
 
@@ -69,7 +64,7 @@ impl<'err, 'c, 'de, T: Decoder<'de>> Iterator for Iter<'err, 'c, 'de, T> {
             }
         }
     }
-    
+
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.len, Some(self.len))

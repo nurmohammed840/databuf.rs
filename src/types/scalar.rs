@@ -24,7 +24,7 @@ impl Decoder<'_> for char {
     #[inline]
     fn decoder(c: &mut &[u8]) -> Result<Self> {
         let num = u32::decoder(c)?;
-        char::from_u32(num).ok_or(invalid_data(format!("{num} is not a valid char")))
+        char::from_u32(num).ok_or(format!("{num} is not a valid char").into())
     }
 }
 
@@ -47,7 +47,7 @@ impl Decoder<'_> for u8 {
                 Ok(*slice)
             }
         } else {
-            Err(invalid_data("Insufficient bytes"))
+            Err("Insufficient bytes".into())
         }
     }
 }

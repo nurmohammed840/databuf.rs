@@ -6,7 +6,7 @@ mod string;
 
 use crate::*;
 use std::{
-    convert::TryInto,
+    convert::{TryFrom, TryInto},
     fmt,
     iter::FromIterator,
     marker::PhantomData,
@@ -79,11 +79,14 @@ impl<Len: LenType, T> DerefMut for Record<Len, T> {
 
 // -----------------------------------------------------------------------
 
-pub trait LenType: TryFrom<usize> + TryInto<usize> + Encoder + for<'de> Decoder<'de> {
+pub trait LenType:
+    fmt::Display + TryFrom<usize> + TryInto<usize> + Encoder + for<'de> Decoder<'de>
+{
     fn max() -> Self;
     fn bits() -> u32;
     fn ty_str() -> &'static str;
 }
+
 macro_rules! impl_len_ty {
     [$($ty:ty),*] => {$(
         impl LenType for $ty {
@@ -94,19 +97,17 @@ macro_rules! impl_len_ty {
     )*};
 }
 impl_len_ty!(u8, u16, u32, u64, usize, L2, L3);
-
 macro_rules! encode_len {
     [$data:expr, $c: expr] => {
-        let len: Len = $data.len().try_into().map_err(|_| invalid_input("Invalid length"))?;
-        len.encoder($c)?;
+        let len = $data.len();
+        Len::try_from(len).map_err(|_| invalid_input(format!("Max payload length is {} ({}), But got {len}", Len::max(), Len::ty_str())))?.encoder($c)?;
     };
 }
 macro_rules! decode_len {
     [$c: expr] => ({
-        let len: usize = Len::decoder($c)?.try_into().map_err(|_| invalid_data("Invalid length"))?;
+        let len: usize = Len::decoder($c)?.try_into().map_err(|_| DynErr::from("Invalid length"))?;
         len
     });
 }
-
 pub(crate) use decode_len;
 pub(crate) use encode_len;

@@ -52,7 +52,7 @@ impl<'de, T: Decoder<'de>, const N: usize> Decoder<'de> for [T; N] {
     }
 }
 
-impl<'de, const N: usize> Decoder<'de> for &'de [u8; N] {
+impl<'de: 'a, 'a, const N: usize> Decoder<'de> for &'a [u8; N] {
     #[inline]
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
         // SEAFTY: bytes.len() == N

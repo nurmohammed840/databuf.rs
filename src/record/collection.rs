@@ -7,23 +7,15 @@ use std::{
 macro_rules! impl_v2 {
     [Encoder for $name: ty where $($ty: tt)*] => {
         impl<$($ty)*> Encoder for $name { impl_v2! {@EncoderBody} }
-        impl<Len: LenType, $($ty)*> Encoder for Record<Len, $name>
-        where
-            Len::Error: Into<DynErr>,
-        {
+        impl<Len: LenType, $($ty)*> Encoder for Record<Len, $name> {
             impl_v2! {@EncoderBody}
         }
     };
     [Decoder for $name: ty where $($ty: tt)*] => {
         impl<'de, $($ty)*> Decoder<'de> for $name { impl_v2! {@DecoderBody} }
-        impl<'de, Len: LenType,  $($ty)*> Decoder<'de> for Record<Len, $name>
-        where
-            usize: TryFrom<Len>,
-            <usize as TryFrom<Len>>::Error: Into<DynErr>,
-        {
+        impl<'de, Len: LenType,  $($ty)*> Decoder<'de> for Record<Len, $name> {
             impl_v2! {@DecoderBody}
         }
-
     };
     [@EncoderBody] => {
         #[inline] fn encoder(&self, c: &mut impl Write) -> Result<()> {
@@ -33,7 +25,7 @@ macro_rules! impl_v2 {
     };
     [@DecoderBody] => {
         #[inline] fn decoder(c: &mut &'de [u8]) -> Result<Self> {
-            let len = Len::decoder(c)?.try_into().map_err(invalid_input)?;
+            let len = decode_len!(c);
             try_collect(c, len)
         }
     };
@@ -43,10 +35,7 @@ impl<T: Encoder> Encoder for [T] {
     impl_v2! {@EncoderBody}
 }
 
-impl<Len: LenType, T: Encoder> Encoder for Record<Len, &[T]>
-where
-    Len::Error: Into<DynErr>,
-{
+impl<Len: LenType, T: Encoder> Encoder for Record<Len, &[T]> {
     impl_v2! {@EncoderBody}
 }
 

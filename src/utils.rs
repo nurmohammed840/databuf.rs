@@ -1,15 +1,19 @@
 use crate::*;
 use std::iter::FromIterator;
 
-pub type DynErr = Box<dyn std::error::Error + Send + Sync>;
+type DynErr = Box<dyn std::error::Error + Send + Sync>;
 
+#[inline]
 pub fn invalid_data(error: impl Into<DynErr>) -> Error {
     Error::new(ErrorKind::InvalidData, error)
 }
+
+#[inline]
 pub fn invalid_input(error: impl Into<DynErr>) -> Error {
     Error::new(ErrorKind::InvalidInput, error)
 }
 
+#[inline]
 pub fn get_slice<'a>(this: &mut &'a [u8], len: usize) -> Result<&'a [u8]> {
     if len <= this.len() {
         unsafe {
@@ -22,6 +26,7 @@ pub fn get_slice<'a>(this: &mut &'a [u8], len: usize) -> Result<&'a [u8]> {
     }
 }
 
+#[inline]
 pub fn try_collect<'de, T, I>(cursor: &mut &'de [u8], len: usize) -> Result<I>
 where
     T: Decoder<'de>,
@@ -66,6 +71,7 @@ impl<'err, 'c, 'de, T: Decoder<'de>> Iterator for Iter<'err, 'c, 'de, T> {
             }
         }
     }
+    
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
         (self.len, Some(self.len))

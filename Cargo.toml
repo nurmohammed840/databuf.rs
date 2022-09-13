@@ -11,8 +11,8 @@ keywords = ["binary", "encode", "decode", "serialize", "deserialize"]
 
 [features]
 
-# Enable nightly features to enable some optimization and performance.
-nightly = []
+# nightly features to enable some optimization.
+# nightly = []
 
 # Endianness
 BE = []         # Big Endian

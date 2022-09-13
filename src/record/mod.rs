@@ -1,22 +1,17 @@
-use crate::*;
+// #[cfg(feature = "nightly")]
+// mod specialize;
+
 mod collection;
 mod string;
 
+use crate::*;
 use std::{
+    convert::TryInto,
     fmt,
     iter::FromIterator,
     marker::PhantomData,
     ops::{Deref, DerefMut},
 };
-
-pub trait LenType: TryFrom<usize> + Encoder + for<'de> Decoder<'de> {}
-impl LenType for u8 {}
-impl LenType for u16 {}
-impl LenType for u32 {}
-impl LenType for u64 {}
-impl LenType for usize {}
-impl LenType for len::L2 {}
-impl LenType for len::L3 {}
 
 /// `Record` can be used to represent fixed-size integer to represent the length of a record.
 ///
@@ -32,7 +27,7 @@ impl LenType for len::L3 {}
 /// let bytes = record.encode();
 /// assert_eq!(bytes.len(), 11);
 /// ```
-#[derive(Default, Clone)]
+#[derive(Default, Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Record<Len: LenType, T> {
     _marker: PhantomData<Len>,
     pub data: T,
@@ -82,10 +77,36 @@ impl<Len: LenType, T> DerefMut for Record<Len, T> {
     }
 }
 
+// -----------------------------------------------------------------------
+
+pub trait LenType: TryFrom<usize> + TryInto<usize> + Encoder + for<'de> Decoder<'de> {
+    fn max() -> Self;
+    fn bits() -> u32;
+    fn ty_str() -> &'static str;
+}
+macro_rules! impl_len_ty {
+    [$($ty:ty),*] => {$(
+        impl LenType for $ty {
+            #[inline] fn max() -> Self { <$ty>::MAX }
+            #[inline] fn bits() -> u32 { <$ty>::BITS }
+            #[inline] fn ty_str() -> &'static str { stringify!($ty) }
+        }
+    )*};
+}
+impl_len_ty!(u8, u16, u32, u64, usize, L2, L3);
+
 macro_rules! encode_len {
     [$data:expr, $c: expr] => {
-        let len: Len = $data.len().try_into().map_err(invalid_input)?;
+        let len: Len = $data.len().try_into().map_err(|_| invalid_input("Invalid length"))?;
         len.encoder($c)?;
     };
 }
+macro_rules! decode_len {
+    [$c: expr] => ({
+        let len: usize = Len::decoder($c)?.try_into().map_err(|_| invalid_data("Invalid length"))?;
+        len
+    });
+}
+
+pub(crate) use decode_len;
 pub(crate) use encode_len;

@@ -1,28 +1,31 @@
 use crate::*;
-
-macro_rules! impls {
-    [Encoder for $($ty:ty),*] => {$(
-        impl<Len: LenType> Encoder for Record<Len, &$ty>
-        where
-            Len::Error: Into<DynErr>,
-        {
-            #[inline] fn encoder(&self, c: &mut impl Write) -> Result<()> { impls!(@Body: self.data, c) }
+macro_rules! impl_encoder_fn {
+    [$($data:tt)*] => (
+        #[inline] fn encoder(&self, c: &mut impl Write) -> Result<()> { 
+            encode_len!(self $($data)*, c);
+            c.write_all(self $($data)* .as_ref())
         }
-        impl Encoder for $ty {
-            #[inline] fn encoder(&self, c: &mut impl Write) -> Result<()> { impls!(@Body: self, c) }
+    );
+}
+macro_rules! impl_encoder_for {
+    [$($ty:ty; $rec_ty:ty),*] => {$(
+        impl Encoder for $ty { impl_encoder_fn!(); }
+        impl<Len: LenType> Encoder for $rec_ty {
+            impl_encoder_fn!(.data);
         }
     )*};
-    [@Body: $data:expr, $c: expr] => ({
-        encode_len!($data, $c);
-        $c.write_all($data.as_ref())
-    });
+    [$($data:tt)*] => (
+        #[inline] fn encoder(&self, c: &mut impl Write) -> Result<()> { 
+            encode_len!(self $($data)*, c);
+            c.write_all(self $($data)* .as_ref())
+        }
+    );
 }
-
-impls!(Encoder for str, String);
+impl_encoder_for!(str; Record<Len, &str>, String; Record<Len, String>);
 
 macro_rules! read_slice {
     [$c: expr] => ({
-        let len: usize = Len::decoder($c)?.try_into().map_err(invalid_input)?;
+        let len = decode_len!($c);
         get_slice($c, len)
     });
 }
@@ -34,17 +37,9 @@ impl<'de> Decoder<'de> for String {
     }
 }
 
-impl<'de, Len: LenType> Decoder<'de> for Record<Len, String>
-where
-    usize: TryFrom<Len>,
-    <usize as TryFrom<Len>>::Error: Into<DynErr>,
-{
+impl<'de, Len: LenType> Decoder<'de> for Record<Len, String> {
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
-        // let data = read_slice!(c)?;
-        let data = {
-            let len: usize = Len::decoder(c)?.try_into().map_err(invalid_input)?;
-            get_slice(c, len)
-        }?;
+        let data = read_slice!(c)?;
         String::from_utf8(data.to_vec())
             .map_err(invalid_data)
             .map(Record::new)
@@ -58,11 +53,7 @@ impl<'de: 'a, 'a> Decoder<'de> for &'a str {
     }
 }
 
-impl<'de: 'a, 'a, Len: LenType> Decoder<'de> for Record<Len, &'a str>
-where
-    usize: TryFrom<Len>,
-    <usize as TryFrom<Len>>::Error: Into<DynErr>,
-{
+impl<'de: 'a, 'a, Len: LenType> Decoder<'de> for Record<Len, &'a str> {
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
         let data = read_slice!(c)?;
         core::str::from_utf8(data)
@@ -71,17 +62,15 @@ where
     }
 }
 
+//------------------------------------------------------------------------------------------
+
 impl<'de: 'a, 'a> Decoder<'de> for &'a [u8] {
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
         read_slice!(c)
     }
 }
 
-impl<'de: 'a, 'a, Len: LenType> Decoder<'de> for Record<Len, &'a [u8]>
-where
-    usize: TryFrom<Len>,
-    <usize as TryFrom<Len>>::Error: Into<DynErr>,
-{
+impl<'de: 'a, 'a, Len: LenType> Decoder<'de> for Record<Len, &'a [u8]> {
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
         read_slice!(c).map(Record::new)
     }

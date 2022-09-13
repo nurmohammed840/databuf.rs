@@ -48,12 +48,12 @@ pub use L2 as Len;
 pub use L3 as Len;
 
 macro_rules! def {
-    [$name:ident($ty:ty), SIZE: $SIZE:literal, MAX: $MAX:literal, TryFromErr: $err: ty, $encoder:item, $decoder:item] => {
+    [$name:ident($ty:ty), BITS: $BITS:literal, TryFromErr: $err: ty, $encoder:item, $decoder:item] => {
         #[derive(Default, Debug, Clone, Copy, PartialEq)]
         pub struct $name(pub $ty);
         impl $name {
-            pub const MAX: $ty = $MAX;
-            pub const SIZE: usize = $SIZE;
+            pub const MAX: $name = $name((1 << $BITS) - 1);
+            pub const BITS: u32 = $BITS;
         }
         impl Encoder for $name { #[inline] $encoder }
         impl Decoder<'_> for $name { #[inline] $decoder }
@@ -61,9 +61,9 @@ macro_rules! def {
             type Error = std::io::Error;
             #[inline] fn try_from(num: usize) -> std::result::Result<Self, Self::Error> {
                 let num: $ty = num.try_into().map_err(invalid_data)?;
-                if num > Self::MAX {
-                    Err(invalid_data(format!("Max payload length: {}, But got {num}", $name::MAX)))
-                } else { 
+                if num > Self::MAX.0 {
+                    Err(invalid_data(format!("Max payload length: {}, But got {num}", Self::MAX.0)))
+                } else {
                     Ok(Self(num))
                 }
             }
@@ -85,8 +85,7 @@ macro_rules! def {
 
 def!(
     L2(u16),
-    SIZE: 2,
-    MAX: 0x7FFF,
+    BITS: 15,
     TryFromErr: Infallible,
     fn encoder(&self, c: &mut impl Write) -> Result<()> {
         let num = self.0;
@@ -94,7 +93,7 @@ def!(
         // No MSB is set, Bcs `num` is less then `128`
         if num < 128 { c.write_all(&[b1]) }
         else {
-            debug_assert!(num <= Self::MAX);
+            debug_assert!(num <= 0x7FFF);
             let b1 = 0x80 | b1; // 7 bits with MSB is set.
             let b2 = (num >> 7) as u8; // next 8 bits
             c.write_all(&[b1, b2])
@@ -113,8 +112,7 @@ def!(
 
 def!(
     L3(u32),
-    SIZE: 3,
-    MAX: 0x3FFFFF,
+    BITS: 22,
     TryFromErr: std::num::TryFromIntError,
     fn encoder(&self, c: &mut impl Write) -> Result<()> {
         let num = self.0;
@@ -128,7 +126,7 @@ def!(
                 c.write_all(&[0x80 | b1, b2])
             }
             else {
-                // debug_assert!(num <= Self::MAX);
+                debug_assert!(num <= 0x3FFFFF);
                 let b3 = (num >> 14) as u8; // next 8 bits
                 // set first 2 bits  of `b1` to `11`
                 c.write_all(&[0xC0 | b1, b2, b3])
@@ -169,7 +167,7 @@ mod tests {
 
     #[test]
     fn l2() {
-        assert_eq!(L2::MAX, (1 << 15) - 1);
+        assert_eq!(L2::MAX.0, (1 << 15) - 1);
 
         assert_len!(L2(0), [0]);
         assert_len!(L2(127), [127]);
@@ -180,7 +178,7 @@ mod tests {
 
     #[test]
     fn l3() {
-        assert_eq!(L3::MAX, (1 << 22) - 1);
+        assert_eq!(L3::MAX.0, (1 << 22) - 1);
 
         assert_len!(L3(0), [0]);
         assert_len!(L3(127), [127]);

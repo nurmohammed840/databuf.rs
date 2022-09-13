@@ -1,16 +1,13 @@
 #![doc = include_str!("../README.md")]
 // #![cfg_attr(feature = "nightly", feature(min_specialization))]
 
-// #[cfg(feature = "nightly")]
-// mod specialization;
-
 pub use bin_layout_derive::*;
 pub mod len;
 mod record;
 mod types;
 mod utils;
 
-use len::Len;
+use len::*;
 use std::io::{Error, ErrorKind, Result, Write};
 use utils::*;
 

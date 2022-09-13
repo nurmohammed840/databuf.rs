@@ -24,4 +24,4 @@ jobs:
       run: cargo test
 
     - name: Run test II
-      run: cargo test --features="L3" --features="BE"
+      run: cargo test --features="L2" --features="BE"

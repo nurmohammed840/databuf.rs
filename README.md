@@ -121,16 +121,16 @@ Encoding algorithm is very straightforward, reserving one or two most significan
 
 |  MSB  | Length | Usable Bits | Range    |
 | :---: | :----: | :---------: | :------- |
-|   0   |   1    |      7      | 0..127   |
-|   1   |   2    |     15      | 0..32767 |
+|   0   |   1    |      7      | 0..128   |
+|   1   |   2    |     15      | 0..32768 |
 
 #### L3
 
 |  MSB  | Length | Usable Bits | Range      |
 | :---: | :----: | :---------: | :--------- |
-|   0   |   1    |      7      | 0..127     |
-|  10   |   2    |     14      | 0..16383   |
-|  11   |   3    |     22      | 0..4194303 |
+|   0   |   1    |      7      | 0..128     |
+|  10   |   2    |     14      | 0..16384   |
+|  11   |   3    |     22      | 0..4194304 |
 
  
 For example, Binary representation of `0x_C0DE` is `0x_11_00000011_011110`

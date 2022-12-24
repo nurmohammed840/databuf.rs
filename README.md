@@ -1,6 +1,6 @@
 [Doc](https://docs.rs/databuf/)
 
-Very fast! And flexible, This library used to serialize and deserialize data in binary format.
+This library used to serialize and deserialize structured data in binary format.
 
 ### [Endianness](https://en.wikipedia.org/wiki/Endianness)
 
@@ -9,7 +9,7 @@ If you want to use big endian, you can set `BE` features flag. And for native en
 
 ```toml
 [dependencies]
-databuf = { version = "7", features = ["BE"] }
+databuf = { version = "0.1", features = ["BE"] }
 ```
 
 ### Examples

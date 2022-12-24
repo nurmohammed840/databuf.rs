@@ -13,7 +13,7 @@ use std::{
     ops::{Deref, DerefMut},
 };
 
-/// [Record](https://docs.rs/bin-layout/latest/bin_layout/struct.Record.html) can be used to
+/// [Record](https://docs.rs/databuf/latest/databuf/struct.Record.html) can be used to
 /// encode collections where the size of the length is known.
 ///
 /// For example, `Record<u8, String>` here the maximum allowed payload length is 255 (`u8::MAX`)
@@ -21,7 +21,7 @@ use std::{
 /// ### Example
 ///
 /// ```rust
-/// use bin_layout::*;
+/// use databuf::*;
 ///
 /// let record: Record<u8, String> = "very long string!".repeat(15).into();
 /// let bytes = record.encode();
@@ -78,7 +78,7 @@ impl<Len: LenType, T> DerefMut for Record<Len, T> {
     }
 }
 
-/// Supported length type for [Record](https://docs.rs/bin-layout/latest/bin_layout/struct.Record.html)
+/// Supported length type for [Record](https://docs.rs/databuf/latest/databuf/struct.Record.html)
 pub trait LenType:
     fmt::Display + TryFrom<usize> + TryInto<usize> + Encoder + for<'de> Decoder<'de>
 {

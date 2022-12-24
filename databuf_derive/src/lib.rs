@@ -15,10 +15,10 @@ pub fn encoder(input: TokenStream) -> TokenStream {
         ..
     } = parse_macro_input!(input);
 
-    trait_bounds(&mut generics, parse_quote!(bin_layout::Encoder));
+    trait_bounds(&mut generics, parse_quote!(databuf::Encoder));
     let (_, ty_generics, where_clause) = generics.split_for_impl();
     let body = {
-        let mut body = String::from("use bin_layout::Encoder as _E_;");
+        let mut body = String::from("use databuf::Encoder as _E_;");
         let mut write_encoder = |is_ref, ident: String| {
             body.push_str("_E_::encoder(");
             body.push_str(if is_ref { "self." } else { "&self." });
@@ -47,7 +47,7 @@ pub fn encoder(input: TokenStream) -> TokenStream {
         TokenS::from_str(&body).unwrap()
     };
     TokenStream::from(quote! {
-        impl #generics bin_layout::Encoder for #ident #ty_generics #where_clause {
+        impl #generics databuf::Encoder for #ident #ty_generics #where_clause {
             fn encoder(&self, c: &mut impl std::io::Write) -> std::io::Result<()> { #body }
         }
     })
@@ -76,7 +76,7 @@ pub fn decoder(input: TokenStream) -> TokenStream {
     let (lt, ig) = decoder_trait_bounds(&generics);
     let (_, ty_generics, where_clause) = generics.split_for_impl();
     let body = {
-        let mut body = String::from("use bin_layout::Decoder as _D_; Ok(Self");
+        let mut body = String::from("use databuf::Decoder as _D_; Ok(Self");
         match data {
             Data::Struct(data_struct) => match data_struct.fields {
                 Fields::Named(fields) => {
@@ -103,7 +103,7 @@ pub fn decoder(input: TokenStream) -> TokenStream {
         TokenS::from_str(&body).unwrap()
     };
     TokenStream::from(quote! {
-        impl <#lt, #ig> bin_layout::Decoder<'_de_> for #ident #ty_generics
+        impl <#lt, #ig> databuf::Decoder<'_de_> for #ident #ty_generics
         #where_clause
         {
             fn decoder(c: &mut &'_de_ [u8]) -> std::result::Result<Self, std::boxed::Box<dyn std::error::Error + std::marker::Send + std::marker::Sync>> {
@@ -119,7 +119,7 @@ fn decoder_trait_bounds(g: &Generics) -> (LifetimeDef, Punctuated<GenericParam, 
     let mut params = g.params.clone();
     for param in &mut params {
         match param {
-            GenericParam::Type(ty) => ty.bounds.push(parse_quote!(bin_layout::Decoder<'_de_>)),
+            GenericParam::Type(ty) => ty.bounds.push(parse_quote!(databuf::Decoder<'_de_>)),
             GenericParam::Lifetime(lt) => de_lifetime.bounds.push(lt.lifetime.clone()),
             _ => {}
         }

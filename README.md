@@ -1,4 +1,4 @@
-[Doc](https://docs.rs/bin-layout/)
+[Doc](https://docs.rs/databuf/)
 
 Very fast! And flexible, This library used to serialize and deserialize data in binary format.
 
@@ -9,13 +9,13 @@ If you want to use big endian, you can set `BE` features flag. And for native en
 
 ```toml
 [dependencies]
-bin-layout = { version = "7", features = ["BE"] }
+databuf = { version = "7", features = ["BE"] }
 ```
 
 ### Examples
 
 ```rust
-use bin_layout::*;
+use databuf::*;
 
 #[derive(Encoder, Decoder)]
 struct Car<'a> {
@@ -41,7 +41,7 @@ let new = Company::decode(&bytes);
 - Zero-copy deserialization: mean that no data is copied. Dynamic length data (`Vec`, `String`, `&[T]`, `&str` etc..) are encoded with their length value first, Following by each entry.
     
 ```rust
-use bin_layout::*;
+use databuf::*;
 
 #[derive(Encoder, Decoder)]
 struct Msg<'a> {
@@ -60,7 +60,7 @@ assert_eq!(msg.data, "Hello, World!"); // Here, data is referenced.
 - In this example, The following structs, don't have any dynamic length data. So we can have a fixed size buffer at compile time.
 
 ```rust
-use bin_layout::*;
+use databuf::*;
 
 #[derive(Encoder, Decoder)]
 struct Date {
@@ -85,7 +85,7 @@ record.encoder(&mut writer.as_mut_slice());
 
 ```rust
 use std::io;
-use bin_layout::*;
+use databuf::*;
 
 type DynErr = Box<dyn std::error::Error + Send + Sync>;
 
@@ -100,7 +100,7 @@ impl Encoder for Foo {
     }
 }
 impl Decoder<'_> for Foo {
-    fn decoder(c: &mut &[u8]) -> Result<Self, DynErr> {
+    fn decoder(c: &mut &[u8]) -> Result<Self> {
         Ok(Self {
             x: u8::decoder(c)?,
             y: Bar::decoder(c)?,
@@ -151,7 +151,7 @@ Another example, `L3(107)` is encoded in just 1 byte:
 
 #### Fixed-Length Collections
 
-[Record](https://docs.rs/bin-layout/latest/bin_layout/struct.Record.html) can be used to 
+[Record](https://docs.rs/databuf/latest/databuf/struct.Record.html) can be used to 
 encode collections where the size of the length is known. 
 
 For example, `Record<u8, String>` here the maximum allowed payload length is 255 (`u8::MAX`)

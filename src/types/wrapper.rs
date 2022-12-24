@@ -27,10 +27,14 @@ impls!(Decoder for Box, Rc, Arc, Cell, RefCell);
 macro_rules! impl_sp {
     [$($name: ident),*] => ($(
         impl<'de> Decoder<'de> for $name<str> {
-            #[inline] fn decoder(c: &mut &'de [u8]) -> Result<Self> { <&'de str>::decoder(c).map(Self::from) }
+            #[inline] fn decoder(c: &mut &'de [u8]) -> Result<Self> { 
+                <&'de str>::decoder(c).map(Self::from) 
+            }
         }
         impl<'de, T: Decoder<'de>> Decoder<'de> for $name<[T]> {
-            #[inline] fn decoder(c: &mut &'de [u8]) -> Result<Self> { Vec::<T>::decoder(c).map(Self::from) }
+            #[inline] fn decoder(c: &mut &'de [u8]) -> Result<Self> { 
+                Vec::<T>::decoder(c).map(Self::from) 
+            }
         }
     )*);
 }

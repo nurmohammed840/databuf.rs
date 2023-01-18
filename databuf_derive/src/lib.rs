@@ -1,10 +1,7 @@
 use proc_macro::TokenStream;
-use quote::quote;
-use std::str::FromStr;
-use syn::punctuated::Punctuated;
+use quote::{quote, quote_spanned};
 use syn::*;
-
-use quote::__private::{Span, TokenStream as TokenS};
+use syn::{punctuated::Punctuated, spanned::Spanned};
 
 #[proc_macro_derive(Encoder)]
 pub fn encoder(input: TokenStream) -> TokenStream {
@@ -15,46 +12,54 @@ pub fn encoder(input: TokenStream) -> TokenStream {
         ..
     } = parse_macro_input!(input);
 
-    trait_bounds(&mut generics, parse_quote!(databuf::Encoder));
+    add_trait_bounds(&mut generics, parse_quote!(databuf::Encoder));
     let (_, ty_generics, where_clause) = generics.split_for_impl();
-    let body = {
-        let mut body = String::from("use databuf::Encoder as _E_;");
-        let mut write_encoder = |is_ref, ident: String| {
-            body.push_str("_E_::encoder(");
-            body.push_str(if is_ref { "self." } else { "&self." });
-            body.push_str(&ident);
-            body.push_str(",c)?;");
-        };
-        match data {
-            Data::Struct(data_struct) => match data_struct.fields {
-                Fields::Named(fields) => {
-                    for field in fields.named {
-                        let is_ref = matches!(field.ty, Type::Reference(_));
-                        write_encoder(is_ref, field.ident.unwrap().to_string());
+
+    let body = match data {
+        Data::Struct(data_struct) => match data_struct.fields {
+            Fields::Named(fields) => {
+                let recurse = fields.named.iter().map(|f| {
+                    let name = &f.ident;
+                    let ref_and = match &f.ty {
+                        Type::Reference(_) => None,
+                        ty => Some(Token![&](ty.span())),
+                    };
+                    quote_spanned! {f.span()=>
+                        E::encoder(#ref_and self.#name, c)?;
                     }
-                }
-                Fields::Unnamed(fields) => {
-                    for (i, field) in fields.unnamed.into_iter().enumerate() {
-                        let is_ref = matches!(field.ty, Type::Reference(_));
-                        write_encoder(is_ref, i.to_string());
+                });
+                quote! { #(#recurse)* }
+            }
+            Fields::Unnamed(fields) => {
+                let recurse = fields.unnamed.iter().enumerate().map(|(i, f)| {
+                    let index = Index::from(i);
+                    let ref_and = match &f.ty {
+                        Type::Reference(_) => None,
+                        ty => Some(Token![&](ty.span())),
+                    };
+                    quote_spanned! {f.span()=>
+                        E::encoder(#ref_and self.#index, c)?;
                     }
-                }
-                Fields::Unit => {}
-            },
-            _ => panic!("Default `Encoder` implementation for `enum` not yet stabilized"),
-        };
-        body.push_str("Ok(())");
-        TokenS::from_str(&body).unwrap()
+                });
+                quote! { #(#recurse)* }
+            }
+            Fields::Unit => quote! {},
+        },
+        _ => panic!("Default `Encoder` implementation for `enum` not yet stabilized"),
     };
+
     TokenStream::from(quote! {
         impl #generics databuf::Encoder for #ident #ty_generics #where_clause {
-            fn encoder(&self, c: &mut impl std::io::Write) -> std::io::Result<()> { #body }
+            #[inline] fn encoder(&self, c: &mut impl ::std::io::Write) -> ::std::io::Result<()> {
+                use databuf::Encoder as E;
+                #body
+                Ok(())
+            }
         }
     })
 }
 
-/// Add a bound `T: Encoder` to every type parameter of `T`.
-fn trait_bounds(generics: &mut Generics, bound: TypeParamBound) {
+fn add_trait_bounds(generics: &mut Generics, bound: TypeParamBound) {
     for param in &mut generics.params {
         if let GenericParam::Type(type_param) = param {
             type_param.bounds.push(bound.clone());
@@ -73,53 +78,51 @@ pub fn decoder(input: TokenStream) -> TokenStream {
         ..
     } = parse_macro_input!(input);
 
-    let (lt, ig) = decoder_trait_bounds(&generics);
+    let (lt, ig) = add_decoder_trait_bounds(&generics);
     let (_, ty_generics, where_clause) = generics.split_for_impl();
-    let body = {
-        let mut body = String::from("use databuf::Decoder as _D_; Ok(Self");
-        match data {
-            Data::Struct(data_struct) => match data_struct.fields {
-                Fields::Named(fields) => {
-                    body.push('{');
-                    for field in fields.named {
-                        body.push_str(&field.ident.unwrap().to_string());
-                        body.push(':');
-                        body.push_str("_D_::decoder(c)?,");
+
+    let body = match data {
+        Data::Struct(data_struct) => match data_struct.fields {
+            Fields::Named(fields) => {
+                let recurse = fields.named.iter().map(|f| {
+                    let name = &f.ident;
+                    quote_spanned! {f.span()=>
+                        #name: D::decoder(c)?,
                     }
-                    body.push('}');
-                }
-                Fields::Unnamed(fields) => {
-                    body.push('(');
-                    for _ in fields.unnamed {
-                        body.push_str("_D_::decoder(c)?,");
+                });
+                quote!({ #(#recurse)* })
+            }
+            Fields::Unnamed(fields) => {
+                let recurse = fields.unnamed.iter().map(|f| {
+                    quote_spanned! {f.span()=>
+                        D::decoder(c)?,
                     }
-                    body.push(')');
-                }
-                Fields::Unit => {}
-            },
-            _ => panic!("Default `Decoder<'_>` implementation for `enum` not yet stabilized"),
-        };
-        body.push(')');
-        TokenS::from_str(&body).unwrap()
+                });
+                quote! {(#(#recurse)*)}
+            }
+            Fields::Unit => quote! {},
+        },
+        _ => panic!("Default `Decoder` implementation for `enum` not yet stabilized"),
     };
     TokenStream::from(quote! {
-        impl <#lt, #ig> databuf::Decoder<'_de_> for #ident #ty_generics
+        impl <#lt, #ig> databuf::Decoder<'__de__> for #ident #ty_generics
         #where_clause
         {
-            fn decoder(c: &mut &'_de_ [u8]) -> std::result::Result<Self, std::boxed::Box<dyn std::error::Error + std::marker::Send + std::marker::Sync>> {
-                #body
+            #[inline] fn decoder(c: &mut &'__de__ [u8]) -> databuf::Result<Self> {
+                use databuf::Decoder as D;
+                Ok(Self #body)
             }
         }
     })
 }
 
 /// Add a bound `T: Decoder<'de>` to every type parameter of `T`.
-fn decoder_trait_bounds(g: &Generics) -> (LifetimeDef, Punctuated<GenericParam, token::Comma>) {
-    let mut de_lifetime = LifetimeDef::new(Lifetime::new("'_de_", Span::call_site()));
+fn add_decoder_trait_bounds(g: &Generics) -> (LifetimeDef, Punctuated<GenericParam, token::Comma>) {
+    let mut de_lifetime = LifetimeDef::new(Lifetime::new("'__de__", g.span()));
     let mut params = g.params.clone();
     for param in &mut params {
         match param {
-            GenericParam::Type(ty) => ty.bounds.push(parse_quote!(databuf::Decoder<'_de_>)),
+            GenericParam::Type(ty) => ty.bounds.push(parse_quote!(databuf::Decoder<'__de__>)),
             GenericParam::Lifetime(lt) => de_lifetime.bounds.push(lt.lifetime.clone()),
             _ => {}
         }

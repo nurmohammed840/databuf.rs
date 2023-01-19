@@ -87,8 +87,6 @@ record.encoder(&mut writer.as_mut_slice());
 use std::io;
 use databuf::*;
 
-type DynErr = Box<dyn std::error::Error + Send + Sync>;
-
 #[derive(Encoder, Decoder)]
 struct Bar(u16);
 struct Foo { x: u8, y: Bar }

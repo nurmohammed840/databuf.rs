@@ -36,7 +36,7 @@ pub fn encoder(input: TokenStream) -> TokenStream {
         Data::Enum(enum_data) => {
             let recurse = enum_data.variants.iter().enumerate().map(|(i, v)| {
                 let name = &v.ident;
-                let index = i as u16;
+                let index = Index::from(i);
                 let (fields, encode_fields) = match &v.fields {
                     Fields::Named(fields) => {
                         let field_names = fields.named.iter().enumerate().map(|(idx, f)| {
@@ -69,9 +69,10 @@ pub fn encoder(input: TokenStream) -> TokenStream {
                     }
                     Fields::Unit => (quote!(), quote!()),
                 };
+
                 quote! {
                     Self:: #name #fields => {
-                        E::encoder(& #index, c)?;
+                        E::encoder(&L2(#index), c)?;
                         #encode_fields
                     }
                 }
@@ -83,7 +84,7 @@ pub fn encoder(input: TokenStream) -> TokenStream {
 
     TokenStream::from(quote! {
         const _: () = {
-            use ::databuf::Encoder as E;
+            use ::databuf::{Encoder as E, len::L2};
             impl #impl_generics E for #ident #ty_generics #where_clause {
                 fn encoder(&self, c: &mut impl ::std::io::Write) -> ::std::io::Result<()> {
                     #body
@@ -181,7 +182,7 @@ pub fn decoder(input: TokenStream) -> TokenStream {
                 quote! { #index => Self::#name #body, }
             });
             quote! {
-                let discriminant: u16 = D::decoder(c)?;
+                let discriminant: u16 = L2::decoder(c)?.0;
                 Ok(match discriminant {
                     #(#recurse)*
                     _ => return Err(Error::from(format!("Invalid discriminant: {}", discriminant))),
@@ -192,7 +193,7 @@ pub fn decoder(input: TokenStream) -> TokenStream {
     };
     TokenStream::from(quote! {
         const _: () = {
-            use ::databuf::{Decoder as D, Error, Result};
+            use ::databuf::{len::L2, Decoder as D, Error, Result};
             use ::std::{format, result::Result::{Err, Ok}};
             impl <#lt, #ig> D<'decoder> for #ident #ty_generics #where_clause {
                 fn decoder(c: &mut &'decoder [u8]) -> Result<Self> {

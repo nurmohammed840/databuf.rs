@@ -14,8 +14,8 @@ pub use record::*;
 
 use std::{io, io::Write};
 
-type DynErr = Box<dyn std::error::Error + Send + Sync>;
-pub type Result<T> = std::result::Result<T, DynErr>;
+pub type Error = Box<dyn std::error::Error + Send + Sync>;
+pub type Result<T> = std::result::Result<T, Error>;
 
 /// This trait used to serialize the data structure into binary format.
 pub trait Encoder {

@@ -31,7 +31,7 @@ macro_rules! read_slice {
 impl<'de> Decoder<'de> for String {
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
         let data = read_slice!(c)?;
-        String::from_utf8(data.to_vec()).map_err(DynErr::from)
+        String::from_utf8(data.to_vec()).map_err(Error::from)
     }
 }
 
@@ -39,7 +39,7 @@ impl<'de, Len: LenType> Decoder<'de> for Record<Len, String> {
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
         let data = read_slice!(c)?;
         String::from_utf8(data.to_vec())
-            .map_err(DynErr::from)
+            .map_err(Error::from)
             .map(Record::new)
     }
 }
@@ -47,7 +47,7 @@ impl<'de, Len: LenType> Decoder<'de> for Record<Len, String> {
 impl<'de: 'a, 'a> Decoder<'de> for &'a str {
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
         let data = read_slice!(c)?;
-        std::str::from_utf8(data).map_err(DynErr::from)
+        std::str::from_utf8(data).map_err(Error::from)
     }
 }
 
@@ -55,7 +55,7 @@ impl<'de: 'a, 'a, Len: LenType> Decoder<'de> for Record<Len, &'a str> {
     fn decoder(c: &mut &'de [u8]) -> Result<Self> {
         let data = read_slice!(c)?;
         core::str::from_utf8(data)
-            .map_err(DynErr::from)
+            .map_err(Error::from)
             .map(Record::new)
     }
 }

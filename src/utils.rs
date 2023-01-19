@@ -2,7 +2,7 @@ use crate::*;
 use std::iter::FromIterator;
 
 #[inline]
-pub fn invalid_input(error: impl Into<DynErr>) -> io::Error {
+pub fn invalid_input(error: impl Into<Error>) -> io::Error {
     io::Error::new(io::ErrorKind::InvalidInput, error)
 }
 
@@ -40,7 +40,7 @@ where
 
 pub struct Iter<'err, 'c, 'de, T> {
     len: usize,
-    err: &'err mut Option<DynErr>,
+    err: &'err mut Option<Error>,
     cursor: &'c mut &'de [u8],
     _marker: std::marker::PhantomData<T>,
 }

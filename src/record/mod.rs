@@ -105,7 +105,7 @@ macro_rules! encode_len {
 }
 macro_rules! decode_len {
     [$c: expr] => ({
-        let len: usize = Len::decoder($c)?.try_into().map_err(|_| DynErr::from("Invalid length"))?;
+        let len: usize = Len::decoder($c)?.try_into().map_err(|_| Error::from("Invalid length"))?;
         len
     });
 }

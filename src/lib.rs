@@ -1,12 +1,13 @@
 #![doc = include_str!("../README.md")]
 // #![cfg_attr(feature = "nightly", feature(min_specialization))]
-
 pub use databuf_derive::*;
-pub mod len;
+pub mod var_len;
+
+mod config;
 mod types;
 mod utils;
 
-use len::*;
+use var_len::*;
 use utils::*;
 
 mod record;

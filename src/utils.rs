@@ -7,7 +7,7 @@ pub fn invalid_input(error: impl Into<Error>) -> io::Error {
 }
 
 #[inline]
-pub fn get_slice<'a>(remaining: &mut &'a [u8], len: usize) -> Result<&'a [u8]> {
+pub fn get_slice<'de>(remaining: &mut &'de [u8], len: usize) -> Result<&'de [u8]> {
     if len <= remaining.len() {
         unsafe {
             let slice = remaining.get_unchecked(..len);
@@ -38,14 +38,14 @@ where
     }
 }
 
-pub struct Iter<'err, 'c, 'de, T> {
+pub struct Iter<'err, 'cursor, 'de, T> {
     len: usize,
     err: &'err mut Option<Error>,
-    cursor: &'c mut &'de [u8],
+    cursor: &'cursor mut &'de [u8],
     _marker: std::marker::PhantomData<T>,
 }
 
-impl<'err, 'c, 'de, T: Decoder<'de>> Iterator for Iter<'err, 'c, 'de, T> {
+impl<'err, 'cursor, 'de, T: Decoder<'de>> Iterator for Iter<'err, 'cursor, 'de, T> {
     type Item = T;
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {

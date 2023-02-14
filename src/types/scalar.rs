@@ -1,45 +1,45 @@
 use crate::*;
 
-impl Encoder for bool {
+impl Encode for bool {
     #[inline]
-    fn encoder(&self, writer: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, writer: &mut impl Write) -> io::Result<()> {
         writer.write_all(&[*self as u8])
     }
 }
 
-impl Decoder<'_> for bool {
+impl Decode<'_> for bool {
     #[inline]
-    fn decoder(c: &mut &[u8]) -> Result<Self> {
-        u8::decoder(c).map(|byte| byte != 0)
+    fn decode<const CONFIG: u8>(c: &mut &[u8]) -> Result<Self> {
+        u8::decode::<CONFIG>(c).map(|byte| byte != 0)
     }
 }
 
-impl Encoder for char {
+impl Encode for char {
     #[inline]
-    fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
-        u32::from(*self).encoder(c)
+    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+        u32::from(*self).encode::<CONFIG>(c)
     }
 }
-impl Decoder<'_> for char {
+impl Decode<'_> for char {
     #[inline]
-    fn decoder(c: &mut &[u8]) -> Result<Self> {
-        let num = u32::decoder(c)?;
+    fn decode<const CONFIG: u8>(c: &mut &[u8]) -> Result<Self> {
+        let num = u32::decode::<CONFIG>(c)?;
         char::from_u32(num).ok_or_else(|| format!("{num} is not a valid char").into())
     }
 }
 
 // ----------------------------------------------------------------------------------------------
 
-impl Encoder for u8 {
+impl Encode for u8 {
     #[inline]
-    fn encoder(&self, writer: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, writer: &mut impl Write) -> io::Result<()> {
         writer.write_all(&[*self])
     }
 }
 
-impl Decoder<'_> for u8 {
+impl Decode<'_> for u8 {
     #[inline]
-    fn decoder(reader: &mut &[u8]) -> Result<Self> {
+    fn decode<const CONFIG: u8>(reader: &mut &[u8]) -> Result<Self> {
         if !reader.is_empty() {
             unsafe {
                 let slice = reader.get_unchecked(0);
@@ -52,39 +52,39 @@ impl Decoder<'_> for u8 {
     }
 }
 
-impl Encoder for i8 {
+impl Encode for i8 {
     #[inline]
-    fn encoder(&self, writer: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, writer: &mut impl Write) -> io::Result<()> {
         writer.write_all(&[*self as u8])
     }
 }
-impl Decoder<'_> for i8 {
+impl Decode<'_> for i8 {
     #[inline]
-    fn decoder(c: &mut &[u8]) -> Result<Self> {
-        u8::decoder(c).map(|byte| byte as i8)
+    fn decode<const CONFIG: u8>(c: &mut &[u8]) -> Result<Self> {
+        u8::decode::<CONFIG>(c).map(|byte| byte as i8)
     }
 }
 macro_rules! impl_data_type_for {
     [$($rty:ty)*] => ($(
-        impl Encoder for $rty {
-            #[inline] fn encoder(&self, writer: &mut impl Write) -> io::Result<()> {
-                #[cfg(not(any(feature = "BE", feature = "NE")))]
-                return writer.write_all(&self.to_le_bytes());
-                #[cfg(feature = "BE")]
-                return writer.write_all(&self.to_be_bytes());
-                #[cfg(feature = "NE")]
-                return writer.write_all(&self.to_ne_bytes());
+        impl Encode for $rty {
+            #[inline] fn encode<const CONFIG: u8>(&self, writer: &mut impl Write) -> io::Result<()> {
+                match CONFIG & config::num::GET {
+                    config::num::LE => writer.write_all(&self.to_le_bytes()),
+                    config::num::BE => writer.write_all(&self.to_be_bytes()),
+                    config::num::NE => writer.write_all(&self.to_ne_bytes()),
+                    _ => unreachable!()
+                }
             }
         }
-        impl Decoder<'_> for $rty {
-            #[inline] fn decoder(c: &mut &[u8]) -> Result<Self> {
-                let arr = <&[u8; std::mem::size_of::<Self>()]>::decoder(c)?;
-                #[cfg(not(any(feature = "BE", feature = "NE")))]
-                return Ok(Self::from_le_bytes(*arr));
-                #[cfg(feature = "BE")]
-                return Ok(Self::from_be_bytes(*arr));
-                #[cfg(feature = "NE")]
-                return Ok(Self::from_ne_bytes(*arr));
+        impl Decode<'_> for $rty {
+            #[inline] fn decode<const CONFIG: u8>(c: &mut &[u8]) -> Result<Self> {
+                let bytes = <&[u8; std::mem::size_of::<Self>()]>::decode::<CONFIG>(c)?;
+                Ok(match CONFIG & config::num::GET {
+                    config::num::LE => Self::from_le_bytes(*bytes),
+                    config::num::BE => Self::from_be_bytes(*bytes),
+                    config::num::NE => Self::from_ne_bytes(*bytes),
+                    _ => unreachable!()
+                })
             }
         }
     )*);
@@ -104,7 +104,8 @@ mod tests {
     #[test]
     fn test_scaler_type() {
         for word in [0x_A5C11, 0x_C0DE, 0x_DEC0DE, 0x_ADDED, 0x_AB0DE, 0x_CAFE] {
-            assert_eq!(word, u32::decode(&word.encode()).unwrap());
+            let bytes = word.to_bytes::<{config::DEFAULT}>();
+            assert_eq!(word, u32::from_bytes::<{config::DEFAULT}>(&bytes).unwrap());
         }
         for word in [
             0x_DEAD_BEEF,
@@ -113,7 +114,8 @@ mod tests {
             0x_C01D_C0FFEE,
             0x_C0CA_C01A,
         ] {
-            assert_eq!(word, u64::decode(&word.encode()).unwrap());
+            let bytes = word.to_bytes::<{config::DEFAULT}>();
+            assert_eq!(word, u64::from_bytes::<{config::DEFAULT}>(&bytes).unwrap());
         }
     }
 }

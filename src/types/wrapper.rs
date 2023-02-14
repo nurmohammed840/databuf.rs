@@ -7,83 +7,83 @@ use std::{
 };
 
 macro_rules! impls {
-    [Encoder for $($name:ty),*] => ($(
-        impl<T: Encoder + ?Sized> Encoder for $name {
+    [Encode for $($name:ty),*] => ($(
+        impl<T: Encode + ?Sized> Encode for $name {
             #[inline]
-            fn encoder(&self, c: &mut impl Write) -> io::Result<()> { (**self).encoder(c) }
+            fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> { (**self).encode::<CONFIG>(c) }
         }
     )*);
-    [Decoder for $($name:ident),*] => ($(
-        impl<'de, T: Decoder<'de>> Decoder<'de> for $name<T> {
+    [Decode for $($name:ident),*] => ($(
+        impl<'de, T: Decode<'de>> Decode<'de> for $name<T> {
             #[inline]
-            fn decoder(c: &mut &'de [u8]) -> Result<Self> { T::decoder(c).map(Self::from) }
+            fn decode<const CONFIG: u8>(c: &mut &'de [u8]) -> Result<Self> { T::decode::<CONFIG>(c).map(Self::from) }
         }
     )*);
 }
 
-impls!(Encoder for &T, &mut T, Box<T>, Rc<T>, Arc<T>);
-impls!(Decoder for Box, Rc, Arc, Cell, RefCell);
+impls!(Encode for &T, &mut T, Box<T>, Rc<T>, Arc<T>);
+impls!(Decode for Box, Rc, Arc, Cell, RefCell);
 
 macro_rules! impl_sp {
     [$($name: ident),*] => ($(
-        impl<'de> Decoder<'de> for $name<str> {
-            #[inline] fn decoder(c: &mut &'de [u8]) -> Result<Self> { 
-                <&'de str>::decoder(c).map(Self::from) 
+        impl<'de> Decode<'de> for $name<str> {
+            #[inline] fn decode<const CONFIG: u8>(c: &mut &'de [u8]) -> Result<Self> {
+                <&'de str>::decode::<CONFIG>(c).map(Self::from)
             }
         }
-        impl<'de, T: Decoder<'de>> Decoder<'de> for $name<[T]> {
-            #[inline] fn decoder(c: &mut &'de [u8]) -> Result<Self> { 
-                Vec::<T>::decoder(c).map(Self::from) 
+        impl<'de, T: Decode<'de>> Decode<'de> for $name<[T]> {
+            #[inline] fn decode<const CONFIG: u8>(c: &mut &'de [u8]) -> Result<Self> {
+                Vec::<T>::decode::<CONFIG>(c).map(Self::from)
             }
         }
     )*);
 }
 impl_sp!(Box, Rc, Arc);
 
-impl<T> Encoder for std::marker::PhantomData<T> {
+impl<T> Encode for std::marker::PhantomData<T> {
     #[inline]
-    fn encoder(&self, _: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, _: &mut impl Write) -> io::Result<()> {
         Ok(())
     }
 }
 
-impl<T> Decoder<'_> for std::marker::PhantomData<T> {
+impl<T> Decode<'_> for std::marker::PhantomData<T> {
     #[inline]
-    fn decoder(_: &mut &[u8]) -> Result<Self> {
+    fn decode<const CONFIG: u8>(_: &mut &[u8]) -> Result<Self> {
         Ok(std::marker::PhantomData)
     }
 }
 
-impl<T: Encoder + Copy> Encoder for Cell<T> {
+impl<T: Encode + Copy> Encode for Cell<T> {
     #[inline]
-    fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
-        self.get().encoder(c)
+    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+        self.get().encode::<CONFIG>(c)
     }
 }
 
-impl<T: Encoder> Encoder for RefCell<T> {
+impl<T: Encode> Encode for RefCell<T> {
     #[inline]
-    fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
-        self.try_borrow().map_err(invalid_input)?.encoder(c)
+    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+        self.try_borrow().map_err(utils::invalid_input)?.encode::<CONFIG>(c)
     }
 }
 
-impl<'a, T> Encoder for Cow<'a, T>
+impl<'a, T> Encode for Cow<'a, T>
 where
-    T: ?Sized + Encoder + ToOwned,
+    T: ?Sized + Encode + ToOwned,
 {
-    fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
-        (**self).encoder(c)
+    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+        (**self).encode::<CONFIG>(c)
     }
 }
 
-impl<'de, 'a, T: ?Sized> Decoder<'de> for Cow<'a, T>
+impl<'de, 'a, T: ?Sized> Decode<'de> for Cow<'a, T>
 where
     T: ToOwned,
-    T::Owned: Decoder<'de>,
+    T::Owned: Decode<'de>,
 {
     #[inline]
-    fn decoder(c: &mut &'de [u8]) -> Result<Self> {
-        T::Owned::decoder(c).map(Cow::Owned)
+    fn decode<const CONFIG: u8>(c: &mut &'de [u8]) -> Result<Self> {
+        T::Owned::decode::<CONFIG>(c).map(Cow::Owned)
     }
 }

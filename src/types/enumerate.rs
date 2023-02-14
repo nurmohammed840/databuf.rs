@@ -1,46 +1,57 @@
 use crate::*;
 
-impl<T: Encoder> Encoder for Option<T> {
-    fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
+impl<T> Encode for Option<T>
+where
+    T: Encode,
+{
+    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
         match self {
             Some(val) => {
                 c.write_all(&[1])?;
-                val.encoder(c)
+                val.encode::<CONFIG>(c)
             }
             None => c.write_all(&[0]),
         }
     }
 }
 
-impl<'de, T: Decoder<'de>> Decoder<'de> for Option<T> {
-    fn decoder(r: &mut &'de [u8]) -> Result<Self> {
-        Ok(match bool::decoder(r)? {
-            true => Some(T::decoder(r)?),
+impl<'de, T: Decode<'de>> Decode<'de> for Option<T> {
+    fn decode<const CONFIG: u8>(r: &mut &'de [u8]) -> Result<Self> {
+        Ok(match bool::decode::<CONFIG>(r)? {
+            true => Some(T::decode::<CONFIG>(r)?),
             false => None,
         })
     }
 }
 
-impl<T: Encoder, E: Encoder> Encoder for std::result::Result<T, E> {
-    fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
+impl<T, E> Encode for std::result::Result<T, E>
+where
+    T: Encode,
+    E: Encode,
+{
+    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
         match self {
             Ok(val) => {
                 c.write_all(&[1])?;
-                val.encoder(c)
+                val.encode::<CONFIG>(c)
             }
             Err(err) => {
                 c.write_all(&[0])?;
-                err.encoder(c)
+                err.encode::<CONFIG>(c)
             }
         }
     }
 }
 
-impl<'de, T: Decoder<'de>, E: Decoder<'de>> Decoder<'de> for std::result::Result<T, E> {
-    fn decoder(c: &mut &'de [u8]) -> Result<Self> {
-        Ok(match bool::decoder(c)? {
-            true => Ok(T::decoder(c)?),
-            false => Err(E::decoder(c)?),
+impl<'de, T, E> Decode<'de> for std::result::Result<T, E>
+where
+    T: Decode<'de>,
+    E: Decode<'de>,
+{
+    fn decode<const CONFIG: u8>(c: &mut &'de [u8]) -> Result<Self> {
+        Ok(match bool::decode::<CONFIG>(c)? {
+            true => Ok(T::decode::<CONFIG>(c)?),
+            false => Err(E::decode::<CONFIG>(c)?),
         })
     }
 }

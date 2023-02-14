@@ -20,13 +20,13 @@ pub fn get_slice<'de>(remaining: &mut &'de [u8], len: usize) -> Result<&'de [u8]
 }
 
 #[inline]
-pub fn try_collect<'de, T, I>(cursor: &mut &'de [u8], len: usize) -> Result<I>
+pub fn try_collect<'de, T, I, const CONFIG: u8>(cursor: &mut &'de [u8], len: usize) -> Result<I>
 where
-    T: Decoder<'de>,
+    T: Decode<'de>,
     I: FromIterator<T>,
 {
     let mut error = None;
-    let out = I::from_iter(Iter {
+    let out = I::from_iter(Iter::<T, CONFIG> {
         len,
         err: &mut error,
         cursor,
@@ -38,21 +38,24 @@ where
     }
 }
 
-pub struct Iter<'err, 'cursor, 'de, T> {
+pub struct Iter<'err, 'cursor, 'de, T, const CONFIG: u8> {
     len: usize,
     err: &'err mut Option<Error>,
     cursor: &'cursor mut &'de [u8],
     _marker: std::marker::PhantomData<T>,
 }
 
-impl<'err, 'cursor, 'de, T: Decoder<'de>> Iterator for Iter<'err, 'cursor, 'de, T> {
+impl<'err, 'cursor, 'de, T, const CONFIG: u8> Iterator for Iter<'err, 'cursor, 'de, T, CONFIG>
+where
+    T: Decode<'de>,
+{
     type Item = T;
     #[inline]
     fn next(&mut self) -> Option<Self::Item> {
         if self.len == 0 {
             return None;
         }
-        match T::decoder(self.cursor) {
+        match T::decode::<CONFIG>(self.cursor) {
             Ok(val) => {
                 self.len -= 1;
                 Some(val)

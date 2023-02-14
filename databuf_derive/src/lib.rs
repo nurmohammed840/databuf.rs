@@ -3,8 +3,8 @@ use quote::{format_ident, quote, quote_spanned, ToTokens};
 use syn::spanned::Spanned;
 use syn::*;
 
-#[proc_macro_derive(Encoder)]
-pub fn encoder(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(Encode)]
+pub fn encode(input: TokenStream) -> TokenStream {
     let DeriveInput {
         data,
         ident,
@@ -72,21 +72,21 @@ pub fn encoder(input: TokenStream) -> TokenStream {
 
                 quote! {
                     Self:: #name #fields => {
-                        E::encoder(&L2(#index), c)?;
+                        E::encode(&LEU15(#index), c)?;
                         #encode_fields
                     }
                 }
             });
             quote! { match self { #(#recurse),* } }
         }
-        Data::Union(_) => panic!("`Encoder` implementation for `union` is not yet stabilized"),
+        Data::Union(_) => panic!("`Encode` implementation for `union` is not yet stabilized"),
     };
 
     TokenStream::from(quote! {
         const _: () = {
-            use ::databuf::{Encoder as E, len::L2};
+            use ::databuf::{Encode as E, len::LEU15};
             impl #impl_generics E for #ident #ty_generics #where_clause {
-                fn encoder(&self, c: &mut impl ::std::io::Write) -> ::std::io::Result<()> {
+                fn encode(&self, c: &mut impl ::std::io::Write) -> ::std::io::Result<()> {
                     #body
                     ::std::result::Result::Ok(())
                 }
@@ -100,7 +100,7 @@ fn encode_field(f: &Field, name: impl ToTokens) -> __private::TokenStream2 {
         Type::Reference(_) => None,
         ty => Some(Token![&](ty.span())),
     };
-    quote_spanned! {f.span()=> E::encoder(#maybe_ref #name, c)?;}
+    quote_spanned! {f.span()=> E::encode(#maybe_ref #name, c)?;}
 }
 
 fn add_trait_bounds(generics: &mut Generics, bound: TypeParamBound) {
@@ -113,8 +113,8 @@ fn add_trait_bounds(generics: &mut Generics, bound: TypeParamBound) {
 
 // -------------------------------------------------------------------------------
 
-#[proc_macro_derive(Decoder)]
-pub fn decoder(input: TokenStream) -> TokenStream {
+#[proc_macro_derive(Decode)]
+pub fn decode(input: TokenStream) -> TokenStream {
     let DeriveInput {
         data,
         ident,
@@ -124,13 +124,13 @@ pub fn decoder(input: TokenStream) -> TokenStream {
 
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
-    // Add a bound `T: Decoder<'de>` to every type parameter of `T`.
+    // Add a bound `T: Decode<'de>` to every type parameter of `T`.
     let (lt, ig) = {
-        let mut de_lifetime = LifetimeDef::new(Lifetime::new("'decoder", impl_generics.span()));
+        let mut de_lifetime = LifetimeDef::new(Lifetime::new("'decode", impl_generics.span()));
         let mut params = generics.params.clone();
         for param in &mut params {
             match param {
-                GenericParam::Type(ty) => ty.bounds.push(parse_quote!(D<'decoder>)),
+                GenericParam::Type(ty) => ty.bounds.push(parse_quote!(D<'decode>)),
                 GenericParam::Lifetime(lt) => de_lifetime.bounds.push(lt.lifetime.clone()),
                 _ => {}
             }
@@ -144,7 +144,7 @@ pub fn decoder(input: TokenStream) -> TokenStream {
                 let recurse = fields.named.iter().map(|f| {
                     let name = &f.ident;
                     quote_spanned! {f.span()=>
-                        #name: D::decoder(c)?,
+                        #name: D::decode::<CONFIG>(c)?,
                     }
                 });
                 quote! { Ok(Self { #(#recurse)* }) }
@@ -152,7 +152,7 @@ pub fn decoder(input: TokenStream) -> TokenStream {
             Fields::Unnamed(fields) => {
                 let recurse = fields.unnamed.iter().map(|f| {
                     quote_spanned! {f.span()=>
-                        D::decoder(c)?,
+                        D::decode::<CONFIG>(c)?,
                     }
                 });
                 quote! { Ok(Self (#(#recurse)*)) }
@@ -167,13 +167,13 @@ pub fn decoder(input: TokenStream) -> TokenStream {
                     Fields::Named(fields) => {
                         let fields = fields.named.iter().map(|f| {
                             let name = &f.ident;
-                            quote_spanned! {f.span()=> #name: D::decoder(c)? }
+                            quote_spanned! {f.span()=> #name: D::decode::<CONFIG>(c)? }
                         });
                         quote!({ #(#fields),* })
                     }
                     Fields::Unnamed(fields) => {
                         let fields = fields.unnamed.iter().map(|f| {
-                            quote_spanned! {f.span()=> D::decoder(c)? }
+                            quote_spanned! {f.span()=> D::decode::<CONFIG>(c)? }
                         });
                         quote! {(#(#fields),*)}
                     }
@@ -182,21 +182,21 @@ pub fn decoder(input: TokenStream) -> TokenStream {
                 quote! { #index => Self::#name #body, }
             });
             quote! {
-                let discriminant: u16 = L2::decoder(c)?.0;
+                let discriminant: u16 = LEU15::decode::<CONFIG>(c)?.0;
                 Ok(match discriminant {
                     #(#recurse)*
                     _ => return Err(Error::from(format!("Invalid discriminant: {}", discriminant))),
                 })
             }
         }
-        Data::Union(_) => panic!("`Decoder` implementation for `union` is not yet stabilized"),
+        Data::Union(_) => panic!("`Decode` implementation for `union` is not yet stabilized"),
     };
     TokenStream::from(quote! {
         const _: () = {
-            use ::databuf::{len::L2, Decoder as D, Error, Result};
+            use ::databuf::{len::LEU15, Decode as D, Error, Result};
             use ::std::{format, result::Result::{Err, Ok}};
-            impl <#lt, #ig> D<'decoder> for #ident #ty_generics #where_clause {
-                fn decoder(c: &mut &'decoder [u8]) -> Result<Self> {
+            impl <#lt, #ig> D<'decode> for #ident #ty_generics #where_clause {
+                fn decode(c: &mut &'decode [u8]) -> Result<Self> {
                     #body
                 }
             }

@@ -1,51 +1,29 @@
-#![allow(warnings)]
-use std::default;
+/// Default Config: [num::LE] and [crate::var_int::LEU29]
+pub const DEFAULT: u8 = num::LE | len::LEU29;
 
-#[derive(Default)]
-pub enum Endian {
-    Native = 0,
-    Big = 1,
-    #[default]
-    Littel = 2,
+pub mod num {
+    pub(crate) const GET: u8 = 0b111;
+
+    // Fixed size number encoding algorithm
+    /// Native Endian
+    pub const NE: u8 = 0;
+    /// Big Endian
+    pub const BE: u8 = 1;
+    /// Littel Endian
+    pub const LE: u8 = 2;
+
+    // Variable length integer encoding algorithm
+    // pub const LEB128: u8 = 3;
+
+    // /// See: https://www.rfc-editor.org/rfc/rfc9000.html#name-variable-length-integer-enc
+    // pub const BEU62: u8 = 4;
 }
 
-#[derive(Default)]
-pub enum VarLen {
-    #[default]
-    U22 = 0b_0_00,
-    U15 = 0b_1_00,
-}
+pub mod len {
+    pub(crate) const GET: u8 = 0b_11_000;
 
-// TODO: I feel lazy to implement...
+    pub const LEU15: u8 = 0b_00_000;
+    pub const LEU22: u8 = 0b_01_000;
 
-// #[derive(Default)]
-// pub enum IntEncoder {
-//     #[default]
-//     Fix = 0b_0_000_00,
-//     LEB128 = 0b_1_000_00,
-//     VLQ = 0b_10_000_00,
-//     ZigZag = 0b_11_000_00,
-// }
-
-pub struct Config(u8);
-
-impl Config {
-    const fn new() -> Self {
-        Self(0)
-    }
-    const fn set_endian(mut self, endian: Endian) -> Self {
-        self.0 |= endian as u8;
-        self
-    }
-    const fn set_var_len(mut self, var_len: VarLen) -> Self {
-        self.0 |= var_len as u8;
-        self
-    }
-    // const fn set_int_encoder(mut self, int_encoder: IntEncoder) -> Self {
-    //     self.0 |= int_encoder as u8;
-    //     self
-    // }
-    const fn build(self) -> u8 {
-        self.0
-    }
+    pub const LEU29: u8 = 0b_10_000;
 }

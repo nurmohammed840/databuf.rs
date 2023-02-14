@@ -1,53 +1,48 @@
-use crate::*;
+use super::*;
 use std::{
     collections::*,
     hash::{BuildHasher, Hash},
 };
 
 macro_rules! impl_v2 {
-    [Encoder for $name: ty where $($ty: tt)*] => {
-        impl<$($ty)*> Encoder for $name { impl_v2! {@EncoderBody} }
-        impl<Len: LenType, $($ty)*> Encoder for Record<Len, $name> { impl_v2! {@EncoderBody} }
+    [Encode for $name: ty where $($ty: tt)*] => {
+        impl<$($ty)*> Encode for $name { impl_v2! {@EncoderBody} }
     };
-    [Decoder for $name: ty where $($ty: tt)*] => {
-        impl<'de, $($ty)*> Decoder<'de> for $name { impl_v2! {@DecoderBody} }
-        impl<'de, Len: LenType,  $($ty)*> Decoder<'de> for Record<Len, $name> { impl_v2! {@DecoderBody} }
+    [Decode for $name: ty where $($ty: tt)*] => {
+        impl<'de, $($ty)*> Decode<'de> for $name { impl_v2! {@DecoderBody} }
     };
     [@EncoderBody] => {
-        #[inline] fn encoder(&self, c: &mut impl Write) -> io::Result<()> {
+        fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
             encode_len!(self, c);
-            self.iter().try_for_each(|item| item.encoder(c))
+            self.iter().try_for_each(|item| item.encode::<CONFIG>(c))
         }
     };
     [@DecoderBody] => {
-        #[inline] fn decoder(c: &mut &'de [u8]) -> Result<Self> {
+        fn decode<const CONFIG: u8>(c: &mut &'de [u8]) -> Result<Self> {
             let len = decode_len!(c);
-            try_collect(c, len)
+            utils::try_collect::<_, _, CONFIG>(c, len)
         }
     };
 }
 
-impl<T: Encoder> Encoder for [T] {
-    impl_v2! {@EncoderBody}
-}
-impl<Len: LenType, T: Encoder> Encoder for Record<Len, &[T]> {
+impl<T: Encode> Encode for [T] {
     impl_v2! {@EncoderBody}
 }
 
-impl_v2!(Encoder for Vec<T>             where T: Encoder);
-impl_v2!(Encoder for VecDeque<T>        where T: Encoder);
-impl_v2!(Encoder for LinkedList<T>      where T: Encoder);
-impl_v2!(Encoder for BinaryHeap<T>      where T: Encoder);
-impl_v2!(Encoder for BTreeSet<T>        where T: Encoder);
-impl_v2!(Encoder for BTreeMap<K, V>     where K: Encoder, V: Encoder);
-impl_v2!(Encoder for HashSet<T, S>      where T: Encoder, S);
-impl_v2!(Encoder for HashMap<K, V, S>   where K: Encoder, V: Encoder, S);
+impl_v2!(Encode for Vec<T>             where T: Encode);
+impl_v2!(Encode for VecDeque<T>        where T: Encode);
+impl_v2!(Encode for LinkedList<T>      where T: Encode);
+impl_v2!(Encode for BinaryHeap<T>      where T: Encode);
+impl_v2!(Encode for BTreeSet<T>        where T: Encode);
+impl_v2!(Encode for BTreeMap<K, V>     where K: Encode, V: Encode);
+impl_v2!(Encode for HashSet<T, S>      where T: Encode, S);
+impl_v2!(Encode for HashMap<K, V, S>   where K: Encode, V: Encode, S);
 
-impl_v2!(Decoder for Vec<T>             where T: Decoder<'de>);
-impl_v2!(Decoder for VecDeque<T>        where T: Decoder<'de>);
-impl_v2!(Decoder for LinkedList<T>      where T: Decoder<'de>);
-impl_v2!(Decoder for BinaryHeap<T>      where T: Decoder<'de> + Ord);
-impl_v2!(Decoder for BTreeSet<T>        where T: Decoder<'de> + Ord);
-impl_v2!(Decoder for BTreeMap<K, V>     where K: Decoder<'de> + Ord, V: Decoder<'de>);
-impl_v2!(Decoder for HashSet<T, S>      where T: Decoder<'de> + Eq + Hash, S: BuildHasher + Default);
-impl_v2!(Decoder for HashMap<K, V, S>   where K: Decoder<'de> + Eq + Hash, V: Decoder<'de>, S: BuildHasher + Default);
+impl_v2!(Decode for Vec<T>             where T: Decode<'de>);
+impl_v2!(Decode for VecDeque<T>        where T: Decode<'de>);
+impl_v2!(Decode for LinkedList<T>      where T: Decode<'de>);
+impl_v2!(Decode for BinaryHeap<T>      where T: Decode<'de> + Ord);
+impl_v2!(Decode for BTreeSet<T>        where T: Decode<'de> + Ord);
+impl_v2!(Decode for BTreeMap<K, V>     where K: Decode<'de> + Ord, V: Decode<'de>);
+impl_v2!(Decode for HashSet<T, S>      where T: Decode<'de> + Eq + Hash, S: BuildHasher + Default);
+impl_v2!(Decode for HashMap<K, V, S>   where K: Decode<'de> + Eq + Hash, V: Decode<'de>, S: BuildHasher + Default);

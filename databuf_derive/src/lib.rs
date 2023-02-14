@@ -72,26 +72,27 @@ pub fn encode(input: TokenStream) -> TokenStream {
 
                 quote! {
                     Self:: #name #fields => {
-                        E::encode(&LEU15(#index), c)?;
+                        E::encode::<C>(&LEU15(#index), c)?;
                         #encode_fields
                     }
                 }
             });
-            quote! { match self { #(#recurse),* } }
+            quote! {
+                use ::databuf::var_int::LEU15;
+                match self { #(#recurse),* } 
+            }
         }
         Data::Union(_) => panic!("`Encode` implementation for `union` is not yet stabilized"),
     };
 
     TokenStream::from(quote! {
-        const _: () = {
-            use ::databuf::{Encode as E, len::LEU15};
-            impl #impl_generics E for #ident #ty_generics #where_clause {
-                fn encode(&self, c: &mut impl ::std::io::Write) -> ::std::io::Result<()> {
-                    #body
-                    ::std::result::Result::Ok(())
-                }
+        impl #impl_generics ::databuf::Encode for #ident #ty_generics #where_clause {
+            fn encode<const C: u8>(&self, c: &mut impl ::std::io::Write) -> ::std::io::Result<()> {
+                use ::databuf::Encode as E;
+                #body
+                ::std::result::Result::Ok(())
             }
-        };
+        }
     })
 }
 
@@ -100,7 +101,7 @@ fn encode_field(f: &Field, name: impl ToTokens) -> __private::TokenStream2 {
         Type::Reference(_) => None,
         ty => Some(Token![&](ty.span())),
     };
-    quote_spanned! {f.span()=> E::encode(#maybe_ref #name, c)?;}
+    quote_spanned! {f.span()=> E::encode::<C>(#maybe_ref #name, c)?;}
 }
 
 fn add_trait_bounds(generics: &mut Generics, bound: TypeParamBound) {
@@ -144,20 +145,20 @@ pub fn decode(input: TokenStream) -> TokenStream {
                 let recurse = fields.named.iter().map(|f| {
                     let name = &f.ident;
                     quote_spanned! {f.span()=>
-                        #name: D::decode::<CONFIG>(c)?,
+                        #name: D::decode::<C>(c)?,
                     }
                 });
-                quote! { Ok(Self { #(#recurse)* }) }
+                quote! { Self { #(#recurse)* } }
             }
             Fields::Unnamed(fields) => {
                 let recurse = fields.unnamed.iter().map(|f| {
                     quote_spanned! {f.span()=>
-                        D::decode::<CONFIG>(c)?,
+                        D::decode::<C>(c)?,
                     }
                 });
-                quote! { Ok(Self (#(#recurse)*)) }
+                quote! { Self (#(#recurse)*) }
             }
-            Fields::Unit => quote! { Ok(Self) },
+            Fields::Unit => quote! { Self },
         },
         Data::Enum(enum_data) => {
             let recurse = enum_data.variants.iter().enumerate().map(|(i, v)| {
@@ -167,13 +168,13 @@ pub fn decode(input: TokenStream) -> TokenStream {
                     Fields::Named(fields) => {
                         let fields = fields.named.iter().map(|f| {
                             let name = &f.ident;
-                            quote_spanned! {f.span()=> #name: D::decode::<CONFIG>(c)? }
+                            quote_spanned! {f.span()=> #name: D::decode::<C>(c)? }
                         });
                         quote!({ #(#fields),* })
                     }
                     Fields::Unnamed(fields) => {
                         let fields = fields.unnamed.iter().map(|f| {
-                            quote_spanned! {f.span()=> D::decode::<CONFIG>(c)? }
+                            quote_spanned! {f.span()=> D::decode::<C>(c)? }
                         });
                         quote! {(#(#fields),*)}
                     }
@@ -181,25 +182,23 @@ pub fn decode(input: TokenStream) -> TokenStream {
                 };
                 quote! { #index => Self::#name #body, }
             });
-            quote! {
-                let discriminant: u16 = LEU15::decode::<CONFIG>(c)?.0;
-                Ok(match discriminant {
+            let fmt_arg = format!("Unknown discriminant of `{{}}::{ident}`: {{}}");
+            quote! ({
+                let discriminant: u16 = ::databuf::var_int::LEU15::decode::<C>(c)?.0;
+                match discriminant {
                     #(#recurse)*
-                    _ => return Err(Error::from(format!("Invalid discriminant: {}", discriminant))),
-                })
-            }
+                    _ => return ::std::result::Result::Err(::databuf::Error::from(::std::format!(#fmt_arg, ::std::module_path!(), discriminant))),
+                }
+            })
         }
         Data::Union(_) => panic!("`Decode` implementation for `union` is not yet stabilized"),
     };
     TokenStream::from(quote! {
-        const _: () = {
-            use ::databuf::{len::LEU15, Decode as D, Error, Result};
-            use ::std::{format, result::Result::{Err, Ok}};
-            impl <#lt, #ig> D<'decode> for #ident #ty_generics #where_clause {
-                fn decode(c: &mut &'decode [u8]) -> Result<Self> {
-                    #body
-                }
+        impl <#lt, #ig> ::databuf::Decode<'decode> for #ident #ty_generics #where_clause {
+            fn decode<const C: u8>(c: &mut &'decode [u8]) -> ::databuf::Result<Self> {
+                use ::databuf::Decode as D;
+                ::std::result::Result::Ok(#body)
             }
-        };
+        }
     })
 }

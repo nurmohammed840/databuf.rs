@@ -13,4 +13,4 @@ keywords = ["binary", "encode", "decode", "serialize", "deserialize"]
 description = "This library used to serialize and deserialize structured data in binary format"
 
 [dependencies]
-databuf-derive = { path = "./databuf_derive", version = "0.1.1" }
+databuf-derive = { path = "./databuf_derive", version = "0.2" }

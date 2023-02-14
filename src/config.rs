@@ -5,12 +5,12 @@ pub mod num {
     pub(crate) const GET: u8 = 0b111;
 
     // Fixed size number encoding algorithm
-    /// Native Endian
-    pub const NE: u8 = 0;
+    /// Littel Endian
+    pub const LE: u8 = 0;
     /// Big Endian
     pub const BE: u8 = 1;
-    /// Littel Endian
-    pub const LE: u8 = 2;
+    /// Native Endian
+    pub const NE: u8 = 2;
 
     // Variable length integer encoding algorithm
     // pub const LEB128: u8 = 3;
@@ -22,8 +22,9 @@ pub mod num {
 pub mod len {
     pub(crate) const GET: u8 = 0b_11_000;
 
-    pub const LEU15: u8 = 0b_00_000;
-    pub const LEU22: u8 = 0b_01_000;
+    pub const LEU29: u8 = 0b_00_000;
 
-    pub const LEU29: u8 = 0b_10_000;
+    pub const LEU22: u8 = 0b_01_000;
+    pub const LEU15: u8 = 0b_10_000;
+
 }

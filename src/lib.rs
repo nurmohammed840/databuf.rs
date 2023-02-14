@@ -1,13 +1,14 @@
 #![doc = include_str!("../README.md")]
+#![allow(clippy::unusual_byte_groupings)]
 // #![cfg_attr(feature = "nightly", feature(min_specialization))]
 
 pub use databuf_derive::*;
 pub mod config;
 pub mod var_int;
 
+mod record;
 mod types;
 mod utils;
-mod record;
 
 use std::{io, io::Write};
 
@@ -22,14 +23,14 @@ pub trait Encode {
     /// ### Example
     ///
     /// ```
-    /// use databuf::Encode;
+    /// use databuf::{Encode, config::num::LE};
     ///
     /// #[derive(Encode)]
     /// struct FooBar {
     ///     foo: u8,
     ///     bar: [u8; 2],
     /// }
-    /// let bytes = FooBar { foo: 1, bar: [2, 3] }.to_bytes();
+    /// let bytes = FooBar { foo: 1, bar: [2, 3] }.to_bytes::<LE>();
     /// assert_eq!(bytes, vec![1, 2, 3]);
     /// ```
     #[inline]

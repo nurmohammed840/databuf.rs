@@ -49,7 +49,7 @@ pub trait Decode<'de>: Sized {
     /// ### Example
     ///
     /// ```
-    /// use databuf::Decode;
+    /// use databuf::{Decode, config::num::LE};
     ///
     /// #[derive(Decode, PartialEq, Debug)]
     /// struct FooBar {
@@ -57,7 +57,7 @@ pub trait Decode<'de>: Sized {
     ///     bar: [u8; 2],
     /// }
     ///
-    /// let foobar = FooBar::from_bytes(&[1, 2, 3]).unwrap();
+    /// let foobar = FooBar::from_bytes::<LE>(&[1, 2, 3]).unwrap();
     /// assert_eq!(foobar, FooBar { foo: 1, bar: [2, 3] });
     /// ```
     #[inline]

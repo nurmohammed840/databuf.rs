@@ -10,7 +10,7 @@ databuf = "0.2"
 ```
 
 ```rust
-use databuf::*;
+use databuf::{*, config::num::LE};
 
 #[derive(Encode, Decode)]
 struct Car<'a> {
@@ -29,8 +29,8 @@ let old = Company {
         Car { name: "Model X", year: 2019, is_new: false },
     ],
 };
-let bytes = old.to_bytes();
-let new = Company::from_bytes(&bytes);
+let bytes = old.to_bytes::<LE>();
+let new = Company::from_bytes::<LE>(&bytes).unwrap();
 ```
 
 - Zero-copy deserialization: mean that no data is copied. `Vec`, `String`, `&[T]`, `&str` etc.. are encoded with their length value first, Following by each entry.
@@ -52,10 +52,12 @@ assert_eq!(msg.id, 42);
 assert_eq!(msg.data, "Hello, World!"); // Here, data is referenced.
 ```
 
-- In this example, The following structs, don't have any dynamic length data. So we can have a fixed size buffer at compile time.
+- Example: Encoding data into a buffer of specified size.
 
 ```rust
-use databuf::*;
+use databuf::{*, config::{num, len}};
+/// Use big endian byte order + Encode `msg` length with `databuf::var_int::LEU15` 
+const CONFIG: u8 = num::BE | len::LEU15;
 
 #[derive(Encode, Decode)]
 struct Date {
@@ -68,47 +70,26 @@ struct Date {
 struct Record {
     id: u32,
     date: Date,
-    value: [u8; 512],
+    msg: String,
 }
 
-let record = Record { id: 42, date: Date { year: 2018, month: 3, day: 7 }, value: [1; 512] };
-let mut writer = [0; 520];
-record.encode(&mut writer.as_mut_slice());
-```
+let record = Record { id: 42, date: Date { year: 2018, month: 3, day: 7 }, msg: "Hello!".into() };
 
-- It's very easy to implement `Encode` or `Decode` trait. For example:
+let mut buf = [0; 20];
+let remaining = &mut buf.as_mut_slice();
+record.encode::<CONFIG>(remaining).unwrap();
 
-```rust
-use std::io;
-use databuf::*;
-
-#[derive(Encode, Decode)]
-struct Bar(u16);
-struct Foo { x: u8, y: Bar }
-
-impl Encode for Foo {
-    fn encode(&self, c: &mut impl io::Write) -> io::Result<()> {
-        self.x.encode(c)?;
-        self.y.encode(c)
-    }
-}
-impl Decode<'_> for Foo {
-    fn decode(c: &mut &[u8]) -> Result<Self> {
-        Ok(Self {
-            x: u8::decode::<CONFIG>(c)?,
-            y: Bar::decode::<CONFIG>(c)?,
-        })
-    }
-}
+let amt = 20 - remaining.len();
+assert_eq!(amt, 15); // 15 bytes written to `buf`
 ```
 
 #### Variable-Length Integer Encoding
 
-This encoding ensures that smaller integer values need fewer bytes to encode. Support types are `LEU15` and `LEU22`, both are encoded in little endian.
-
-By default, `LEU22` (u22) is used to encode length (integer) for record. But you override it by setting `LEU15` (u15) in features flag.
+This encoding ensures that smaller integer values need fewer bytes to encode. Support types are `LEU15`, `LEU22`, `LEU29`, Encoded in little endian.
+By default, `LEU29` is used to encode length.
  
-Encoding algorithm is very straightforward, reserving one or two most significant bits of the first byte to encode rest of the length.
+Encoding algorithm is very straightforward,
+The most significant bits of the first byte determine the byte length to encode the number in little endian.
 
 #### LEU15
 
@@ -150,10 +131,3 @@ Another example, `LEU22(107)` is encoded in just 1 byte:
 ```yml
 1st byte: 0_1101011      # MSB is 0, So we don't have to read extra bytes.
 ```
-
-#### Fixed-Length Collections
-
-[Record](https://docs.rs/databuf/latest/databuf/struct.Record.html) can be used to 
-encode collections where the size of the length is known. 
-
-For example, `Record<u8, String>` here the maximum allowed payload length is 255 (`u8::MAX`)

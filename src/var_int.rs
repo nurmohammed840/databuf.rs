@@ -1,42 +1,4 @@
-//! ### Variable-Length Integer Encoding
-//!
-//! This encoding ensures that smaller integer values need fewer bytes to encode. Support types are `LEU15` and `LEU22`, both are encoded in little endian.
-//!
-//! By default, `LEU22` (u22) is used to encode length (integer) for record. But you override it by setting `LEU15` (u15) in features flag.
-//!  
-//! Encoding algorithm is very straightforward, reserving one or two most significant bits of the first byte to encode rest of the length.
-//!
-//! #### LEU15
-//!
-//! |  MSB  | Length | Usable Bits | Range    |
-//! | :---: | :----: | :---------: | :------- |
-//! |   0   |   1    |      7      | 0..127   |
-//! |   1   |   2    |     15      | 0..32767 |
-//!
-//! #### LEU22
-//!
-//! |  MSB  | Length | Usable Bits | Range      |
-//! | :---: | :----: | :---------: | :--------- |
-//! |  0    |   1    |      7      | 0..127     |
-//! |  10   |   2    |     14      | 0..16383   |
-//! |  11   |   3    |     22      | 0..4194303 |
-//!
-//!  
-//! For example, Binary representation of `0x_C0DE` is `0x_11_00000011_011110`
-//!  
-//! `LEU22(0x_C0DE)` is encoded in 3 bytes:
-//!  
-//! ```yml
-//! 1st byte: 11_011110      # MSB is 11, so read next 2 bytes
-//! 2nd byte:        11
-//! 3rd byte:        11
-//! ```
-//!
-//! Another example, `LEU22(107)` is encoded in just 1 byte:
-//!
-//! ```yml
-//! 1st byte: 0_1101011      # MSB is 0, So we don't have to read extra bytes.
-//! ```
+#![doc = include_str!("../spec/var_int.md")]
 
 use crate::*;
 use std::{
@@ -46,7 +8,7 @@ use std::{
 
 macro_rules! def {
     [$name:ident($ty:ty), BITS: $BITS:literal, TryFromErr: $err: ty, $encode:item, $decode:item] => {
-        #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash)]
+        #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
         pub struct $name(pub $ty);
         impl $name {
             pub const MAX: $name = $name((1 << $BITS) - 1);
@@ -253,7 +215,7 @@ mod tests {
 
         assert_int!(LEU29(16384), [192, 0, 2]);
         assert_int!(LEU29(2097151), [223, 255, 255]);
-        
+
         assert_int!(LEU29(2097152), [224, 0, 0, 1]);
         assert_int!(LEU29(536870911), [255, 255, 255, 255]);
     }

@@ -14,7 +14,11 @@ macro_rules! encode_len {
                 len.encode::<CONFIG>($c)?;
             },
             config::len::LEU22 => {
-                let len: var_int::LEU15 = var_int::LEU15::try_from(len).map_err(utils::invalid_input)?;
+                let len: var_int::LEU22 = var_int::LEU22::try_from(len).map_err(utils::invalid_input)?;
+                len.encode::<CONFIG>($c)?;
+            },
+            config::len::LEU29 => {
+                let len: var_int::LEU29 = var_int::LEU29::try_from(len).map_err(utils::invalid_input)?;
                 len.encode::<CONFIG>($c)?;
             },
             _ => unreachable!()

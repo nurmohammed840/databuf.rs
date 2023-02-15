@@ -64,7 +64,9 @@ impl<T: Encode + Copy> Encode for Cell<T> {
 impl<T: Encode> Encode for RefCell<T> {
     #[inline]
     fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
-        self.try_borrow().map_err(utils::invalid_input)?.encode::<CONFIG>(c)
+        self.try_borrow()
+            .map_err(utils::invalid_input)?
+            .encode::<CONFIG>(c)
     }
 }
 

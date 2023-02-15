@@ -5,6 +5,7 @@ pub mod num {
     pub(crate) const GET: u8 = 0b111;
 
     // Fixed size number encoding algorithm
+
     /// Littel Endian
     pub const LE: u8 = 0;
     /// Big Endian
@@ -12,11 +13,16 @@ pub mod num {
     /// Native Endian
     pub const NE: u8 = 2;
 
-    // Variable length integer encoding algorithm
-    // pub const LEB128: u8 = 3;
+    // Variable integer encoding algorithm
+
+    /// See: https://en.wikipedia.org/wiki/LEB128
+    pub const LEB128: u8 = 3;
 
     // /// See: https://www.rfc-editor.org/rfc/rfc9000.html#name-variable-length-integer-enc
     // pub const BEU62: u8 = 4;
+
+    // /// See: https://en.wikipedia.org/wiki/Variable-length_quantity
+    // pub const VLQ: u8 = 5;
 }
 
 pub mod len {
@@ -26,5 +32,4 @@ pub mod len {
 
     pub const LEU22: u8 = 0b_01_000;
     pub const LEU15: u8 = 0b_10_000;
-
 }

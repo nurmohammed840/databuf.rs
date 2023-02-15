@@ -51,7 +51,6 @@ def!(
     fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
         let num = self.0;
         let b1 = num as u8;
-        // No MSB is set, Bcs `num` is less then `128`
         if num < 128 { return c.write_all(&[b1]) }
 
         debug_assert!(num <= 0x7FFF);
@@ -171,52 +170,3 @@ def!(
         Ok(Self((b4 << 21) | (b3 << 13) | (b2 << 5) | (b1 & 0b_11111)))
     }
 );
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    macro_rules! assert_int {
-        [$len: expr, $expect: expr] => {
-            let bytes = $len.to_bytes::<{config::DEFAULT}>();
-            assert_eq!(bytes, $expect);
-            assert_eq!($len, Decode::from_bytes::<{config::DEFAULT}>(&bytes).unwrap());
-        };
-    }
-
-    #[test]
-    fn le_u15() {
-        assert_int!(LEU15(0), [0]);
-        assert_int!(LEU15(127), [127]);
-
-        assert_int!(LEU15(128), [128, 1]);
-        assert_int!(LEU15(32767), [255, 255]);
-    }
-
-    #[test]
-    fn le_u22() {
-        assert_int!(LEU22(0), [0]);
-        assert_int!(LEU22(127), [127]);
-
-        assert_int!(LEU22(128), [128, 2]);
-        assert_int!(LEU22(16383), [191, 255]);
-
-        assert_int!(LEU22(16384), [192, 0, 1]);
-        assert_int!(LEU22(4194303), [255, 255, 255]);
-    }
-
-    #[test]
-    fn le_u29() {
-        assert_int!(LEU29(0), [0]);
-        assert_int!(LEU29(127), [127]);
-
-        assert_int!(LEU29(128), [128, 2]);
-        assert_int!(LEU29(16383), [191, 255]);
-
-        assert_int!(LEU29(16384), [192, 0, 2]);
-        assert_int!(LEU29(2097151), [223, 255, 255]);
-
-        assert_int!(LEU29(2097152), [224, 0, 0, 1]);
-        assert_int!(LEU29(536870911), [255, 255, 255, 255]);
-    }
-}

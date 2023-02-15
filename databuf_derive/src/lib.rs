@@ -79,7 +79,7 @@ pub fn encode(input: TokenStream) -> TokenStream {
             });
             quote! {
                 use ::databuf::var_int::LEU15;
-                match self { #(#recurse),* } 
+                match self { #(#recurse),* }
             }
         }
         Data::Union(_) => panic!("`Encode` implementation for `union` is not yet stabilized"),

@@ -67,13 +67,13 @@ struct Date {
 }
 
 #[derive(Encode, Decode)]
-struct Record {
-    id: u32,
+struct Record<T> {
+    id: T,
     date: Date,
     msg: String,
 }
 
-let record = Record { id: 42, date: Date { year: 2018, month: 3, day: 7 }, msg: "Hello!".into() };
+let record = Record { id: 42_u32, date: Date { year: 2018, month: 3, day: 7 }, msg: "Hello!".into() };
 
 let mut buf = [0; 20];
 let remaining = &mut buf.as_mut_slice();

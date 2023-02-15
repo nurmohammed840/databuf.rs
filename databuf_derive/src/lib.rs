@@ -12,7 +12,7 @@ pub fn encode(input: TokenStream) -> TokenStream {
         ..
     } = parse_macro_input!(input);
 
-    add_trait_bounds(&mut generics, parse_quote!(E));
+    add_trait_bounds(&mut generics, parse_quote!(::databuf::Encode));
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     let body = match data {
@@ -131,7 +131,7 @@ pub fn decode(input: TokenStream) -> TokenStream {
         let mut params = generics.params.clone();
         for param in &mut params {
             match param {
-                GenericParam::Type(ty) => ty.bounds.push(parse_quote!(D<'decode>)),
+                GenericParam::Type(ty) => ty.bounds.push(parse_quote!(::databuf::Decode<'decode>)),
                 GenericParam::Lifetime(lt) => de_lifetime.bounds.push(lt.lifetime.clone()),
                 _ => {}
             }

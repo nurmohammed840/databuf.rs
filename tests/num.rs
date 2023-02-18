@@ -1,3 +1,4 @@
+use databuf::error::IntegerOverflow;
 use databuf::var_int::{LEU15, LEU22, LEU29};
 use databuf::{
     config::num::{LE, LEB128},
@@ -6,34 +7,45 @@ use databuf::{
 
 #[test]
 fn test_leb128() {
-    macro_rules! assert_leb128 {
-        ($num: expr) => {{
-            let bytes = $num.to_bytes::<LEB128>();
-            println!("{bytes:?}");
-            assert_eq!($num, Decode::from_bytes::<LEB128>(&bytes).unwrap());
-            bytes
-        }};
+    fn to_bytes<const CONFIG: u8>(
+        num: impl Encode + for<'a> Decode<'a> + std::cmp::PartialEq + std::fmt::Debug,
+    ) -> Vec<u8> {
+        let bytes = num.to_bytes::<CONFIG>();
+        let new_num = Decode::from_bytes::<CONFIG>(&bytes).unwrap();
+        assert_eq!(num, new_num);
+        bytes
     }
-    // macro_rules! test_leb128 {
-    //     [$($rty:tt)*] => ($(
-    //         let mut bytes = assert_leb128!($rty::MAX);
-    //         bytes[0] += 1;
-    //         assert_eq!(assert_leb128!($rty::MIN), bytes);
-    //     )*);
-    // }
-    // assert_eq!(assert_leb128!(u16::MIN), vec![0]);
+    assert_eq!(to_bytes::<LEB128>(u16::MIN), vec![0]);
+    assert_eq!(to_bytes::<LEB128>(u16::MAX), vec![255, 255, 3]);
+    assert_eq!(to_bytes::<LEB128>(u32::MAX), vec![255, 255, 255, 255, 15]);
+    to_bytes::<LEB128>(u64::MAX);
+    to_bytes::<LEB128>(u128::MAX);
+    to_bytes::<LEB128>(usize::MAX);
 
-    // assert_eq!(assert_leb128!(u16::MAX), vec![255, 255, 3]);
-    // assert_eq!(assert_leb128!(u32::MAX), vec![255, 255, 255, 255, 15]);
-    assert_leb128!(u64::MAX);
-    // assert_leb128!(u128::MAX);
+    // ------------------------------------
+    
+    macro_rules! test_zigzag {
+        [$($rty:tt)*] => ($(
+            let mut bytes = to_bytes::<LEB128>($rty::MAX);
+            bytes[0] += 1;
+            assert_eq!(to_bytes::<LEB128>($rty::MIN), bytes);
+        )*);
+    }
+    test_zigzag!(i16 i32 i64 i128 isize);
+    
+    // ------------------------------------
 
-    // assert_eq!(vec![255, 255, 255, 251, 15], assert_leb128!(f32::MIN));
-    // assert_eq!(vec![255, 255, 255, 251, 7], assert_leb128!(f32::MAX));
-    // assert_leb128!(f64::MIN);
-    // assert_leb128!(f64::MAX);
-
-    // test_leb128!(i16 i32 i64 i128);
+    fn check_overflow<T>(num: impl Into<u128>)
+    where
+        T: for<'de> Decode<'de> + Encode + std::fmt::Debug,
+    {
+        let bytes = (num.into() + 1).to_bytes::<LEB128>();
+        let err = T::from_bytes::<LEB128>(&bytes).unwrap_err();
+        assert!(err.is::<IntegerOverflow>());
+    }
+    check_overflow::<u16>(u16::MAX);
+    check_overflow::<u32>(u32::MAX);
+    check_overflow::<u64>(u64::MAX);
 }
 
 macro_rules! assert_varint {

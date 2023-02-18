@@ -5,6 +5,7 @@
 pub use databuf_derive::*;
 pub mod config;
 pub mod var_int;
+pub mod error;
 
 mod record;
 mod types;

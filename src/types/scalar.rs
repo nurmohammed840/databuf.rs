@@ -43,12 +43,12 @@ impl Decode<'_> for u8 {
     fn decode<const CONFIG: u8>(reader: &mut &[u8]) -> Result<Self> {
         if !reader.is_empty() {
             unsafe {
-                let slice = reader.get_unchecked(0);
+                let byte = reader.get_unchecked(0);
                 *reader = reader.get_unchecked(1..);
-                Ok(*slice)
+                Ok(*byte)
             }
         } else {
-            Err("Insufficient bytes".into())
+            Err(Box::new(error::InsufficientBytes))
         }
     }
 }
@@ -107,25 +107,27 @@ macro_rules! leb128_num {
     (@decode: f32, $num: tt) => { Self::from_bits($num) };
     (@decode: f64, $num: tt) => { Self::from_bits($num) };
 }
-
+#[test]
+fn test_name() {
+    let a = -127;
+    println!("{:b}", -a);
+}
+// const A: u32 = 0b1111;
 macro_rules! impl_data_type_for {
     [$($rty:tt)*] => ($(
         impl Encode for $rty {
-            fn encode<const CONFIG: u8>(&self, writer: &mut impl Write) -> io::Result<()> {
+            #[inline] fn encode<const CONFIG: u8>(&self, writer: &mut impl Write) -> io::Result<()> {
                 match CONFIG & config::num::GET {
                     config::num::LE => writer.write_all(&self.to_le_bytes()),
                     config::num::BE => writer.write_all(&self.to_be_bytes()),
                     config::num::NE => writer.write_all(&self.to_ne_bytes()),
                     config::num::LEB128 => {
                         let mut num = leb128_num!(@encode: $rty, self);
-                        loop {
-                            let byte = (num & 0b0111_1111) as u8;
+                        while num > 0x7F {
+                            writer.write_all(&[num as u8 | 0x80])?;
                             num >>= 7;
-                            match num == 0 {
-                                true => break byte.encode::<CONFIG>(writer),
-                                false => (0b1000_0000 | byte).encode::<CONFIG>(writer)?,
-                            }
                         }
+                        writer.write_all(&[num as u8])
                     },
                     _ => unreachable!()
                 }

@@ -25,6 +25,14 @@ pub mod num {
     // pub const VLQ: u8 = 5;
 }
 
+// /// Negative Number encoding strategy, when used with variable integer encoding algorithms.
+// /// For example `num::LEB128`
+// pub mod int_codex {
+//     pub const ZIG_ZAG: u8 = 0;
+//     // it use sign bit to represent negetive number.
+//     pub const SIGN_BIT: u8 = 1;
+// }
+
 pub mod len {
     pub(crate) const GET: u8 = 0b_11_000;
 

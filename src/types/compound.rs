@@ -58,15 +58,18 @@ where
     T: Decode<'de>,
 {
     fn decode<const CONFIG: u8>(cursor: &mut &'de [u8]) -> Result<Self> {
-        utils::try_collect::<_, _, CONFIG>(cursor, N)
-            .map(|vec: Vec<T>| unsafe { <[T; N]>::try_from(vec).unwrap_unchecked() })
+        utils::try_collect::<T, Vec<_>, CONFIG>(cursor, N).map(|vec| unsafe {
+            debug_assert_eq!(vec.len(), N);
+            <[T; N]>::try_from(vec).unwrap_unchecked()
+        })
     }
 }
 
 impl<'de: 'a, 'a, const N: usize> Decode<'de> for &'a [u8; N] {
     fn decode<const CONFIG: u8>(c: &mut &'de [u8]) -> Result<Self> {
-        // SEAFTY: bytes.len() == N
-        utils::get_slice(c, N)
-            .map(|bytes| unsafe { <&[u8; N]>::try_from(bytes).unwrap_unchecked() })
+        utils::get_slice(c, N).map(|bytes| unsafe {
+            debug_assert_eq!(bytes.len(), N);
+            <&[u8; N]>::try_from(bytes).unwrap_unchecked()
+        })
     }
 }

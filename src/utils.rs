@@ -15,7 +15,7 @@ pub fn get_slice<'de>(remaining: &mut &'de [u8], len: usize) -> Result<&'de [u8]
             Ok(slice)
         }
     } else {
-        Err("Insufficient bytes".into())
+        Err(Box::new(error::InsufficientBytes))
     }
 }
 
@@ -29,7 +29,7 @@ where
     let out = I::from_iter(Iter::<T, CONFIG> {
         len,
         err: &mut error,
-        cursor,
+        reader: cursor,
         _marker: std::marker::PhantomData,
     });
     match error {
@@ -41,7 +41,7 @@ where
 pub struct Iter<'err, 'cursor, 'de, T, const CONFIG: u8> {
     len: usize,
     err: &'err mut Option<Error>,
-    cursor: &'cursor mut &'de [u8],
+    reader: &'cursor mut &'de [u8],
     _marker: std::marker::PhantomData<T>,
 }
 
@@ -55,7 +55,7 @@ where
         if self.len == 0 {
             return None;
         }
-        match T::decode::<CONFIG>(self.cursor) {
+        match T::decode::<CONFIG>(self.reader) {
             Ok(val) => {
                 self.len -= 1;
                 Some(val)

@@ -6,8 +6,12 @@ use std::{
     fmt,
 };
 
+#[derive(Debug, thiserror::Error)]
+#[error("out of range varint type conversion attempted")]
+pub struct TryFromError;
+
 macro_rules! def {
-    [$name:ident($ty:ty), BITS: $BITS:literal, TryFromErr: $err: ty, $encode:item, $decode:item] => {
+    [$name:ident($ty:ty), BITS: $BITS:literal, UsizeTryFromErr: $err: ty, $encode:item, $decode:item] => {
         #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
         pub struct $name(pub $ty);
         impl $name {
@@ -17,10 +21,10 @@ macro_rules! def {
         impl Encode for $name { $encode }
         impl Decode<'_> for $name { $decode }
         impl TryFrom<usize> for $name {
-            type Error = String;
+            type Error = TryFromError;
             #[inline] fn try_from(num: usize) -> std::result::Result<Self, Self::Error> {
                 if num > (1 << $BITS) - 1 {
-                    Err(format!("Max payload length is {}, But got {num}", Self::MAX.0))
+                    Err(TryFromError)
                 } else {
                     Ok(Self(num as $ty))
                 }
@@ -47,7 +51,7 @@ macro_rules! def {
 def!(
     LEU15(u16),
     BITS: 15,
-    TryFromErr: Infallible,
+    UsizeTryFromErr: Infallible,
     fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
         let num = self.0;
         let b1 = num as u8;
@@ -72,7 +76,7 @@ def!(
 def!(
     LEU22(u32),
     BITS: 22,
-    TryFromErr: std::num::TryFromIntError,
+    UsizeTryFromErr: std::num::TryFromIntError,
     fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
         let num = self.0;
         let b1 = num as u8;
@@ -111,7 +115,7 @@ def!(
 def!(
     LEU29(u32),
     BITS: 29,
-    TryFromErr: std::num::TryFromIntError,
+    UsizeTryFromErr: std::num::TryFromIntError,
     fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
         let num = self.0;
         let b1 = num as u8;

@@ -182,12 +182,17 @@ pub fn decode(input: TokenStream) -> TokenStream {
                 };
                 quote! { #index => Self::#name #body, }
             });
-            let fmt_arg = format!("Unknown discriminant of `{{}}::{ident}`: {{}}");
+            let ident = ident.to_string();
             quote! ({
                 let discriminant: u16 = ::databuf::var_int::LEU15::decode::<C>(c)?.0;
                 match discriminant {
                     #(#recurse)*
-                    _ => return ::std::result::Result::Err(::databuf::Error::from(::std::format!(#fmt_arg, ::std::module_path!(), discriminant))),
+                    _ => return ::std::result::Result::Err(Box::new(
+                        ::databuf::error::UnknownDiscriminant{
+                            ident: ::std::concat!(::std::module_path!(), "::", #ident),
+                            discriminant
+                        }
+                    )),
                 }
             })
         }

@@ -10,3 +10,11 @@ pub struct UnknownDiscriminant {
 #[derive(Error, Debug)]
 #[error("insufficient bytes")]
 pub struct InsufficientBytes;
+
+#[derive(Error, Debug)]
+#[error("invalid char")]
+pub struct InvalidChar;
+
+#[derive(Error, Debug)]
+#[error("out of range integral type conversion attempted")]
+pub struct IntegerOverflow;

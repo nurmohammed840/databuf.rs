@@ -25,7 +25,7 @@ impl Decode<'_> for char {
     #[inline]
     fn decode<const CONFIG: u8>(c: &mut &[u8]) -> Result<Self> {
         let num = u32::decode::<CONFIG>(c)?;
-        char::from_u32(num).ok_or_else(|| format!("{num} is not a valid char").into())
+        char::from_u32(num).ok_or_else(|| Error::from(error::InvalidChar))
     }
 }
 
@@ -66,100 +66,112 @@ impl Decode<'_> for i8 {
     }
 }
 
+// -----------------------------------------------------------------------------------
+
+macro_rules! zigzag {
+    (@encode: signed, $this:tt) => { *$this };
+    (@encode: unsigned, $this:tt) => { (($this << 1) ^ ($this >> Self::BITS - 1)) };
+
+    (@decode: signed, $num:tt) => { $num };
+    (@decode: unsigned, $num:tt) => { (($num >> 1) as Self) ^ -(($num & 1) as Self) };
+}
+
+macro_rules! int_to_uint {
+    (i16) => { u16 };
+    (i32) => { u32 };
+    (i64) => { u64 };
+    (i128) => { u128 };
+}
+
 #[rustfmt::skip]
-macro_rules! leb128_num {
-    (@ubit: u16) => { u16 };
-    (@ubit: u32) => { u32 };
-    (@ubit: u64) => { u64 };
-    (@ubit: u128) => { u128 };
-    (@ubit: usize) => { usize };
-    (@ubit: i16) => { u16 };
-    (@ubit: i32) => { u32 };
-    (@ubit: i64) => { u64 };
-    (@ubit: i128) => { u128 };
-    (@ubit: isize) => { usize };
-    (@ubit: f32) => { u32 };
-    (@ubit: f64) => { u64 };
+macro_rules! leb128 {
+    (@encode: float, $self:tt as $ty:tt, $writer:tt) => { $writer.write_all(&$self.to_le_bytes()) };
+    (@encode: signed, $self:tt as $ty:tt, $writer:tt) => { leb128!(encode_signed_or_unsigned(signed, $self as $ty, $writer)) };
+    (@encode: unsigned, $self:tt as $ty:tt, $writer:tt) => { leb128!(encode_signed_or_unsigned(unsigned, $self as $ty, $writer)) };
+    (encode_signed_or_unsigned($catagory:tt, $self:tt as $ty:tt, $writer:tt)) => ({
+        let mut num = zigzag!(@encode: $catagory, $self) as $ty;
+        while num > 0b0111_1111 {
+            $writer.write_all(&[num as u8 | 0b1000_0000])?;
+            num >>= 7;
+        }
+        $writer.write_all(&[num as u8])
+    });
 
-    (@encode: u16, $this: tt) => { *$this };
-    (@encode: u32, $this: tt) => { *$this };
-    (@encode: u64, $this: tt) => { *$this };
-    (@encode: u128, $this: tt) => { *$this };
-    (@encode: usize, $this: tt) => { *$this };
-    (@encode: i16, $this: tt) => { (($this << 1) ^ ($this >> 15)) as u16 };
-    (@encode: i32, $this: tt) => { (($this << 1) ^ ($this >> 31)) as u32 };
-    (@encode: i64, $this: tt) => { (($this << 1) ^ ($this >> 63)) as u64 };
-    (@encode: i128, $this: tt) => { (($this << 1) ^ ($this >> 127)) as u128 };
-    (@encode: isize, $this: tt) => { (($this << 1) ^ ($this >> isize::BITS - 1)) as usize };
-    (@encode: f32, $this: tt) => { $this.to_bits() };
-    (@encode: f64, $this: tt) => { $this.to_bits() };
+    (@decode: float, $ty:tt, $c:tt) => { Self::from_le_bytes(*<&[u8; size_of::<Self>()]>::decode::<CONFIG>($c)?) };
+    (@decode: signed, $ty:tt, $c:tt) => { leb128!(decode_signed_or_unsigned(signed, $ty, $c)) };
+    (@decode: unsigned, $ty:tt, $c:tt) => { leb128!(decode_signed_or_unsigned(unsigned, $ty, $c)) };
+    (decode_signed_or_unsigned($catagory:tt, $ty:tt, $c:tt)) => ({
+        let mut shift: u8 = 0;
+        let mut num: $ty = 0;
+        loop {
+            let byte = u8::decode::<CONFIG>($c)?;
+            if leb128!(@overflow_check: $ty, shift, byte) {
+                return Err(Box::new(error::IntegerOverflow));
+            }
+            num |= ((byte & 0b0111_1111) as $ty) << shift;
+            if (byte & 0b1000_0000) == 0 {
+                break zigzag!(@decode: $catagory, num);
+            }
+            shift += 7;
+        }
+    });
 
-    (@decode: u16, $num: tt) => { $num };
-    (@decode: u32, $num: tt) => { $num };
-    (@decode: u64, $num: tt) => { $num };
-    (@decode: u128, $num: tt) => { $num };
-    (@decode: usize, $num: tt) => { $num };
-    (@decode: i16, $num: tt) => { (($num >> 1) as Self) ^ -(($num & 1) as Self) };
-    (@decode: i32, $num: tt) => { (($num >> 1) as Self) ^ -(($num & 1) as Self) };
-    (@decode: i64, $num: tt) => { (($num >> 1) as Self) ^ -(($num & 1) as Self) };
-    (@decode: i128, $num: tt) => { (($num >> 1) as Self) ^ -(($num & 1) as Self) };
-    (@decode: isize, $num: tt) => { (($num >> 1) as Self) ^ -(($num & 1) as Self) };
-    (@decode: f32, $num: tt) => { Self::from_bits($num) };
-    (@decode: f64, $num: tt) => { Self::from_bits($num) };
+    (@overflow_check: u16, $shift:expr, $byte:expr) => { $shift == 14 && $byte > 0b11 };
+    (@overflow_check: u32, $shift:expr, $byte:expr) => { $shift == 28 && $byte > 0b1111 };
+    (@overflow_check: u64, $shift:expr, $byte:expr) => { $shift == 63 && $byte > 0b1 };
+    (@overflow_check: u128, $shift:expr, $byte:expr) => { $shift == 126 && $byte > 0b11 };
+    // (@overflow_check: usize, $shift: expr, $byte: expr) => { $shift == 63 && $byte > 1 };
 }
-#[test]
-fn test_name() {
-    let a = -127;
-    println!("{:b}", -a);
-}
-// const A: u32 = 0b1111;
 macro_rules! impl_data_type_for {
-    [$($rty:tt)*] => ($(
-        impl Encode for $rty {
-            #[inline] fn encode<const CONFIG: u8>(&self, writer: &mut impl Write) -> io::Result<()> {
+    [$catagory:tt => $($num:tt as $ty:tt),*] => ($(
+        impl Encode for $num {
+            fn encode<const CONFIG: u8>(&self, writer: &mut impl Write) -> io::Result<()> {
                 match CONFIG & config::num::GET {
                     config::num::LE => writer.write_all(&self.to_le_bytes()),
                     config::num::BE => writer.write_all(&self.to_be_bytes()),
                     config::num::NE => writer.write_all(&self.to_ne_bytes()),
-                    config::num::LEB128 => {
-                        let mut num = leb128_num!(@encode: $rty, self);
-                        while num > 0x7F {
-                            writer.write_all(&[num as u8 | 0x80])?;
-                            num >>= 7;
-                        }
-                        writer.write_all(&[num as u8])
-                    },
+                    config::num::LEB128 => leb128!(@encode: $catagory, self as $ty, writer),
                     _ => unreachable!()
                 }
             }
         }
-        impl Decode<'_> for $rty {
+        impl Decode<'_> for $num {
             fn decode<const CONFIG: u8>(c: &mut &[u8]) -> Result<Self> {
                 Ok(match CONFIG & config::num::GET {
                     config::num::LE => Self::from_le_bytes(*<&[u8; size_of::<Self>()]>::decode::<CONFIG>(c)?),
                     config::num::BE => Self::from_be_bytes(*<&[u8; size_of::<Self>()]>::decode::<CONFIG>(c)?),
                     config::num::NE => Self::from_ne_bytes(*<&[u8; size_of::<Self>()]>::decode::<CONFIG>(c)?),
-                    config::num::LEB128 => {
-                        let mut shift: u8 = 0;
-                        let mut num: leb128_num!(@ubit: $rty) = 0;
-                        loop {
-                            let byte = u8::decode::<CONFIG>(c)?;
-                            num |= ((byte & 0b0111_1111) as leb128_num!(@ubit: $rty)) << shift;
-                            if byte & 0b1000_0000 == 0 {
-                                break leb128_num!(@decode: $rty, num);
-                            }
-                            shift += 7;
-                        }
-                    },
+                    config::num::LEB128 => leb128!(@decode: $catagory, $ty, c),
                     _ => unreachable!()
                 })
             }
         }
     )*);
 }
+impl_data_type_for!(signed => u16 as u16, u32 as u32, u64 as u64, u128 as u128);
+impl_data_type_for!(unsigned => i16 as u16, i32 as u32, i64 as u64, i128 as u128);
+impl_data_type_for!(float => f32 as f32, f64 as f64);
 
-impl_data_type_for!(
-    u16 u32 u64 u128 usize
-    i16 i32 i64 i128 isize
-    f32 f64
-);
+// f32 f64
+// impl_data_type_for!(
+//     usize as u32
+//     // isize as u16
+// );
+
+#[cfg(test)]
+mod tests {
+    #![allow(warnings)]
+    use crate::config::num::LEB128;
+
+    use super::*;
+    const A: u32 = 15;
+ 
+    #[test]
+    fn test_name() {
+        let data = u32::MAX.to_bytes::<LEB128>();
+        println!("{:?}", data);
+
+        let data = vec![255, 255, 0b11];
+        println!("{:?}", u16::from_bytes::<LEB128>(&data));
+    }
+}

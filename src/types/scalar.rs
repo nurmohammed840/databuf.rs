@@ -68,12 +68,10 @@ impl Decode<'_> for i8 {
 
 // -----------------------------------------------------------------------------------
 
-macro_rules! zigzag {
-    (encode(signed, $this:tt)) => { *$this };
-    (encode(unsigned, $this:tt)) => { (($this << 1) ^ ($this >> Self::BITS - 1)) };
-    
-    (decode(signed, $num:tt)) => { $num };
-    (decode(unsigned, $num:tt)) => { (($num >> 1) as Self) ^ -(($num & 1) as Self) };
+#[rustfmt::skip]
+macro_rules! decode_zigzag {
+    (signed, $num:tt) => { $num };
+    (unsigned, $num:tt) => { (($num >> 1) as Self) ^ -(($num & 1) as Self) };
 }
 
 #[rustfmt::skip]
@@ -89,13 +87,13 @@ macro_rules! int_to_uint {
 macro_rules! leb128 {
     (@encode: float, $self:tt as $ty:tt, $writer:tt) => { $writer.write_all(&$self.to_le_bytes()) };
     (@encode: signed, $self:tt as $ty:tt, $writer:tt) => { 
-        leb128!(encode_signed_or_unsigned($writer, signed, $self as $ty)) 
+        leb128!(encode_signed_or_unsigned($writer, *$self)) 
     };
     (@encode: unsigned, $self:tt as $ty:tt, $writer:tt) => {
-        leb128!(encode_signed_or_unsigned($writer, unsigned, $self as int_to_uint!($ty))) 
+        leb128!(encode_signed_or_unsigned($writer, (($self << 1) ^ ($self >> Self::BITS - 1)) as int_to_uint!($ty))) 
     };
-    (encode_signed_or_unsigned($writer:tt, $catagory:tt, $self:tt as $ty:ty)) => ({
-        let mut num = zigzag!(encode($catagory, $self)) as $ty;
+    (encode_signed_or_unsigned($writer:tt, $num: expr)) => ({
+        let mut num = $num;
         while num > 0b0111_1111 {
             $writer.write_all(&[num as u8 | 0b1000_0000])?;
             num >>= 7;
@@ -122,7 +120,7 @@ macro_rules! leb128 {
             }
             num |= ((byte & 0b0111_1111) as $ty) << shift;
             if (byte & 0b1000_0000) == 0 {
-                break zigzag!(decode($catagory, num));
+                break decode_zigzag!($catagory, num);
             }
             shift += 7;
         }
@@ -159,20 +157,3 @@ impl_data_type_for!(signed => u16 u32 u64 u128 usize);
 impl_data_type_for!(unsigned => i16 i32 i64 i128 isize);
 impl_data_type_for!(float => f32 f64);
 
-#[cfg(test)]
-mod tests {
-    #![allow(warnings)]
-    use crate::config::num::LEB128;
-
-    use super::*;
-    const A: u32 = 15;
- 
-    #[test]
-    fn test_name() {
-        let data = u32::MAX.to_bytes::<LEB128>();
-        println!("{:?}", data);
-
-        let data = vec![255, 255, 0b11];
-        println!("{:?}", u16::from_bytes::<LEB128>(&data));
-    }
-}

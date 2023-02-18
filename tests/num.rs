@@ -23,7 +23,7 @@ fn test_leb128() {
     to_bytes::<LEB128>(usize::MAX);
 
     // ------------------------------------
-    
+
     macro_rules! test_zigzag {
         [$($rty:tt)*] => ($(
             let mut bytes = to_bytes::<LEB128>($rty::MAX);
@@ -32,7 +32,7 @@ fn test_leb128() {
         )*);
     }
     test_zigzag!(i16 i32 i64 i128 isize);
-    
+
     // ------------------------------------
 
     fn check_overflow<T>(num: impl Into<u128>)
@@ -46,6 +46,11 @@ fn test_leb128() {
     check_overflow::<u16>(u16::MAX);
     check_overflow::<u32>(u32::MAX);
     check_overflow::<u64>(u64::MAX);
+
+    let mut bytes = vec![255; 18];
+    bytes.push(0b111_u8);
+    let err = u128::from_bytes::<LEB128>(&bytes).unwrap_err();
+    assert!(err.is::<IntegerOverflow>());
 }
 
 macro_rules! assert_varint {

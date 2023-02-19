@@ -45,7 +45,7 @@ For example, Binary representation of `0x_C0DE` is `0x11000000_11011110`
 `BEU22(0x_C0DE)` is encoded in 3 bytes:
  
 ```yml
-1st byte:        11  # MSB is 11, so read next 2 bytes
+1st byte:  11       # MSB is 11, so read next 2 bytes
 2nd byte:  11000000
 3rd byte:  11011110
 ```

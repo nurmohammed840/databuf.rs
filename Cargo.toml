@@ -14,4 +14,3 @@ description = "This library used to serialize and deserialize structured data in
 
 [dependencies]
 databuf-derive = { path = "./databuf_derive", version = "0.3.0" }
-thiserror = "1.0"

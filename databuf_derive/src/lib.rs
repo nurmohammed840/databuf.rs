@@ -72,13 +72,13 @@ pub fn encode(input: TokenStream) -> TokenStream {
 
                 quote! {
                     Self:: #name #fields => {
-                        E::encode::<C>(&LEU15(#index), c)?;
+                        E::encode::<C>(&BEU15(#index), c)?;
                         #encode_fields
                     }
                 }
             });
             quote! {
-                use ::databuf::var_int::LEU15;
+                use ::databuf::var_int::BEU15;
                 match self { #(#recurse),* }
             }
         }
@@ -184,7 +184,7 @@ pub fn decode(input: TokenStream) -> TokenStream {
             });
             let ident = ident.to_string();
             quote! ({
-                let discriminant: u16 = ::databuf::var_int::LEU15::decode::<C>(c)?.0;
+                let discriminant: u16 = ::databuf::var_int::BEU15::decode::<C>(c)?.0;
                 match discriminant {
                     #(#recurse)*
                     _ => return ::std::result::Result::Err(Box::new(

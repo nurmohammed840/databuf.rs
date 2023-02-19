@@ -45,7 +45,7 @@ macro_rules! def {
 }
 
 def!(
-    LEU15(u16),
+    BEU15(u16),
     BITS: 15,
     UsizeTryFromErr: Infallible,
     fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
@@ -71,7 +71,7 @@ def!(
 );
 
 def!(
-    LEU22(u32),
+    BEU22(u32),
     BITS: 22,
     UsizeTryFromErr: std::num::TryFromIntError,
     fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
@@ -105,7 +105,7 @@ def!(
     }
 );
 def!(
-    LEU29(u32),
+    BEU29(u32),
     BITS: 29,
     UsizeTryFromErr: std::num::TryFromIntError,
     fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
@@ -151,7 +151,7 @@ def!(
 );
 
 def!(
-    LEU30(u32),
+    BEU30(u32),
     BITS: 30,
     UsizeTryFromErr: std::num::TryFromIntError,
     fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {

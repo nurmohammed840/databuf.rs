@@ -63,53 +63,53 @@ macro_rules! assert_varint {
 
 #[test]
 fn test_be_u15() {
-    assert_varint!(LEU15(0), [0]);
-    assert_varint!(LEU15(127), [127]);
+    assert_varint!(BEU15(0), [0]);
+    assert_varint!(BEU15(127), [127]);
 
-    assert_varint!(LEU15(128), [128, 128]);
-    assert_varint!(LEU15(32767), [255, 255]);
+    assert_varint!(BEU15(128), [128, 128]);
+    assert_varint!(BEU15(32767), [255, 255]);
 }
 
 #[test]
 fn test_be_u22() {
-    assert_varint!(LEU22(0), [0]);
-    assert_varint!(LEU22(127), [127]);
+    assert_varint!(BEU22(0), [0]);
+    assert_varint!(BEU22(127), [127]);
 
-    assert_varint!(LEU22(128), [128, 128]);
-    assert_varint!(LEU22(16383), [191, 255]);
+    assert_varint!(BEU22(128), [128, 128]);
+    assert_varint!(BEU22(16383), [191, 255]);
 
-    assert_varint!(LEU22(16384), [192, 64, 0]);
-    assert_varint!(LEU22(4194303), [255, 255, 255]);
+    assert_varint!(BEU22(16384), [192, 64, 0]);
+    assert_varint!(BEU22(4194303), [255, 255, 255]);
 }
 
 #[test]
 fn test_be_u29() {
-    assert_varint!(LEU29(0), [0]);
-    assert_varint!(LEU29(127), [127]);
+    assert_varint!(BEU29(0), [0]);
+    assert_varint!(BEU29(127), [127]);
 
-    assert_varint!(LEU29(128), [128, 128]);
-    assert_varint!(LEU29(16383), [191, 255]);
+    assert_varint!(BEU29(128), [128, 128]);
+    assert_varint!(BEU29(16383), [191, 255]);
 
-    assert_varint!(LEU29(16384), [192, 64, 0]);
-    assert_varint!(LEU29(2097151), [223, 255, 255]);
+    assert_varint!(BEU29(16384), [192, 64, 0]);
+    assert_varint!(BEU29(2097151), [223, 255, 255]);
 
-    assert_varint!(LEU29(2097152), [224, 32, 0, 0]);
-    assert_varint!(LEU29(536870911), [255, 255, 255, 255]);
+    assert_varint!(BEU29(2097152), [224, 32, 0, 0]);
+    assert_varint!(BEU29(536870911), [255, 255, 255, 255]);
 }
 
 #[test]
 fn test_be_u30() {
-    assert_varint!(LEU30(0), [0]);
-    assert_varint!(LEU30(63), [63]);
+    assert_varint!(BEU30(0), [0]);
+    assert_varint!(BEU30(63), [63]);
 
-    assert_varint!(LEU30(64), [64, 64]);
-    assert_varint!(LEU30(16383), [127, 255]);
+    assert_varint!(BEU30(64), [64, 64]);
+    assert_varint!(BEU30(16383), [127, 255]);
 
-    assert_varint!(LEU30(16384), [128, 64, 0]);
-    assert_varint!(LEU30(4194303), [191, 255, 255]);
+    assert_varint!(BEU30(16384), [128, 64, 0]);
+    assert_varint!(BEU30(4194303), [191, 255, 255]);
 
-    assert_varint!(LEU30(4194304), [192, 64, 0, 0]);
-    assert_varint!(LEU30(1073741823), [255, 255, 255, 255]);
+    assert_varint!(BEU30(4194304), [192, 64, 0, 0]);
+    assert_varint!(BEU30(1073741823), [255, 255, 255, 255]);
 }
 
 #[test]

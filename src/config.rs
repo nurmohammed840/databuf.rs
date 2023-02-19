@@ -1,5 +1,5 @@
-/// Default Config: [num::LE] and [crate::var_int::LEU29]
-pub const DEFAULT: u8 = num::LE | len::LEU30;
+/// Default Config: [num::LE] and [crate::var_int::BEU29]
+pub const DEFAULT: u8 = num::LE | len::BEU30;
 
 pub mod num {
     pub(crate) const GET: u8 = 0b111;
@@ -36,9 +36,9 @@ pub mod num {
 pub mod len {
     pub(crate) const GET: u8 = 0b_11_000;
 
-    pub const LEU30: u8 = 0b_00_000;
-    pub const LEU29: u8 = 0b_01_000;
+    pub const BEU30: u8 = 0b_00_000;
+    pub const BEU29: u8 = 0b_01_000;
 
-    pub const LEU22: u8 = 0b_10_000;
-    pub const LEU15: u8 = 0b_11_000;
+    pub const BEU22: u8 = 0b_10_000;
+    pub const BEU15: u8 = 0b_11_000;
 }

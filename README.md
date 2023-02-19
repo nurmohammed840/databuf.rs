@@ -89,7 +89,7 @@ This encoding ensures that smaller integer values need fewer bytes to encode. Su
 By default, `BEU29` is used to encode length.
  
 Encoding algorithm is very straightforward,
-The most significant bits of the first byte determine the byte length to encode the number in little endian.
+The most significant bits of the first byte determine the byte length to encode the number in big endian.
 
 #### BEU15
 

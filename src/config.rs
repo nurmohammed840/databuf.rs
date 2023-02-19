@@ -27,7 +27,7 @@ pub mod num {
 
 // /// Negative Number encoding strategy, when used with variable integer encoding algorithms.
 // /// For example `num::LEB128`
-// pub mod int_codex {
+// pub mod int_codec {
 //     pub const ZIG_ZAG: u8 = 0;
 //     // it use sign bit to represent negetive number.
 //     pub const SIGN_BIT: u8 = 1;

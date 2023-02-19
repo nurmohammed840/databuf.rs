@@ -11,7 +11,8 @@ macro_rules! def {
         #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
         pub struct $name(pub $ty);
         impl $name {
-            pub const MAX: $name = $name((1 << $BITS) - 1);
+            pub const MAX: $ty = (1 << $BITS) - 1;
+            pub const MIN: $ty = 0;
             pub const BITS: u32 = $BITS;
         }
         impl Encode for $name { $encode }

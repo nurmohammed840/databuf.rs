@@ -11,7 +11,11 @@ impl Encode for bool {
 impl Decode<'_> for bool {
     #[inline]
     fn decode<const CONFIG: u8>(c: &mut &[u8]) -> Result<Self> {
-        u8::decode::<CONFIG>(c).map(|byte| byte != 0)
+        match u8::decode::<CONFIG>(c)? {
+            0 => Ok(false),
+            1 => Ok(true),
+            _ => Err(Box::new(error::InvalidBoolValue)),
+        }
     }
 }
 
@@ -156,4 +160,3 @@ macro_rules! impl_data_type_for {
 impl_data_type_for!(signed => u16 u32 u64 u128 usize);
 impl_data_type_for!(unsigned => i16 i32 i64 i128 isize);
 impl_data_type_for!(float => f32 f64);
-

@@ -18,3 +18,7 @@ pub struct InvalidChar;
 #[derive(Error, Debug)]
 #[error("out of range integral type conversion attempted")]
 pub struct IntegerOverflow;
+
+#[derive(Error, Debug)]
+#[error("invalid value for bool type: expected 0 or 1")]
+pub struct InvalidBoolValue;

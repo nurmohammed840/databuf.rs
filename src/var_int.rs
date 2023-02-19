@@ -6,10 +6,6 @@ use std::{
     fmt,
 };
 
-#[derive(Debug, thiserror::Error)]
-#[error("out of range varint type conversion attempted")]
-pub struct TryFromError;
-
 macro_rules! def {
     [$name:ident($ty:ty), BITS: $BITS:literal, UsizeTryFromErr: $err: ty, $encode:item, $decode:item] => {
         #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
@@ -21,10 +17,10 @@ macro_rules! def {
         impl Encode for $name { $encode }
         impl Decode<'_> for $name { $decode }
         impl TryFrom<usize> for $name {
-            type Error = TryFromError;
+            type Error = error::IntegerOverflow;
             #[inline] fn try_from(num: usize) -> std::result::Result<Self, Self::Error> {
                 if num > (1 << $BITS) - 1 {
-                    Err(TryFromError)
+                    Err(error::IntegerOverflow)
                 } else {
                     Ok(Self(num as $ty))
                 }
@@ -121,7 +117,6 @@ def!(
         let b1 = num as u8;
         // (0) 1111111
         if num < (1 << 7) { return c.write_all(&[b1]) }
-
         // 11111111 (10) 111111
         if num < (1 << 14) {
             let b1 = b1 & 0b_111111; // read 6 LSB
@@ -129,7 +124,6 @@ def!(
             // set 2 MSB of `b1` to `10`
             return c.write_all(&[0x80 | b1, b2])
         }
-
         // 11111111 11111111 (110) 11111
         let b1 = b1 & 0b_11111; // read 5 LSB
         let b2 = (num >> 5) as u8; // next 8 bits
@@ -140,21 +134,18 @@ def!(
         }
         // 11111111 11111111 11111111 (111) 11111
         debug_assert!(num < (1 << 29));
-
         let b4 = (num >> 21) as u8; // next 8 bits
         c.write_all(&[0xE0 | b1, b2, b3, b4])
     },
-
     fn decode<const CONFIG: u8>(c: &mut &[u8]) -> Result<Self> {
         let b1 = u8::decode::<CONFIG>(c)? as u32;
-        // // if 1st bit is `0`
+        // if 1st bit is `0`
         if b1 >> 7 == 0b0 { return Ok(Self(b1)) }
         if b1 >> 6 == 0b10 {
             // 11111111 (10) 111111
             let b2 = u8::decode::<CONFIG>(c)? as u32;
             return Ok(Self(b2 << 6 | (b1 & 0b_111111)));
         }
-
         if b1 >> 5 == 0b110 {
             //    b3    |    b2    |    b1
             // 11111111 | 11111111 | (110) 11111
@@ -162,15 +153,64 @@ def!(
             let (b3, b2) = (*b3 as u32, *b2 as u32);
             return Ok(Self((b3 << 13) | (b2 << 5) | (b1 & 0b_11111)));
         }
-
         // At this point, the first 3 bits (MSB) of `b1` are always `111`
         //
         //     b4   |    b3    |    b2    |     b1
         // 11111111 | 11111111 | 11111111 | (111) 11111
-
         let [b2, b3, b4] = <&[u8; 3]>::decode::<CONFIG>(c)?;
         let (b4, b3, b2) = (*b4 as u32, *b3 as u32, *b2 as u32);
-
         Ok(Self((b4 << 21) | (b3 << 13) | (b2 << 5) | (b1 & 0b_11111)))
+    }
+);
+
+def!(
+    LEU30(u32),
+    BITS: 30,
+    UsizeTryFromErr: std::num::TryFromIntError,
+    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+        let num = self.0;
+        let b1 = num as u8;
+        // (00) 111111
+        if num < (1 << 6) {
+            return c.write_all(&[b1])
+        }
+        let b1 = b1 & 0b_111111; // read 6 LSB
+        let b2 = (num >> 6) as u8; // next 8 bits
+        if num < (1 << 14) {
+            // 11111111 (01) 111111
+            // set 2 MSB of `b1` to 1
+            return c.write_all(&[0x40 | b1, b2])
+        }
+        let b3 = (num >> 14) as u8; // next 8 bits
+        if num < (1 << 22) {
+            // 11111111 11111111 (10) 111111
+            return c.write_all(&[0x80 | b1, b2, b3])
+        }
+        // 11111111 11111111 11111111 (11) 111111
+        debug_assert!(num < (1 << 30));
+        let b4 = (num >> 22) as u8; // next 8 bits
+        c.write_all(&[0xC0 | b1, b2, b3, b4])
+    },
+
+    fn decode<const CONFIG: u8>(c: &mut &[u8]) -> Result<Self> {
+        let b1 = u8::decode::<CONFIG>(c)? as u32;
+        let len = b1 >> 6;
+        //  if 1st bit is `0`
+        if len == 0 { return Ok(Self(b1)) }
+
+        let b1 = b1 & 0b111111;
+
+        if len == 1 {
+            let b2 = u8::decode::<CONFIG>(c)? as u32;
+            return Ok(Self(b2 << 6 | b1));
+        }
+        if len == 2 {
+            let [b2, b3] = <&[u8; 2]>::decode::<CONFIG>(c)?;
+            let (b3, b2) = (*b3 as u32, *b2 as u32);
+            return Ok(Self((b3 << 14) | (b2 << 6) | b1));
+        }
+        let [b2, b3, b4] = <&[u8; 3]>::decode::<CONFIG>(c)?;
+        let (b4, b3, b2) = (*b4 as u32, *b3 as u32, *b2 as u32);
+        Ok(Self((b4 << 22) | (b3 << 14) | (b2 << 6) | b1))
     }
 );

@@ -1,5 +1,5 @@
 use databuf::error::IntegerOverflow;
-use databuf::var_int::{LEU15, LEU22, LEU29};
+use databuf::var_int::*;
 use databuf::{
     config::num::{LE, LEB128},
     Decode, Encode,
@@ -96,6 +96,19 @@ fn test_le_u29() {
     assert_varint!(LEU29(2097152), [224, 0, 0, 1]);
     assert_varint!(LEU29(536870911), [255, 255, 255, 255]);
 }
+
+#[test]
+fn test_le_u30() {
+    // assert_varint!(LEU30(0), [0]);
+    // assert_varint!(LEU30(64), [127]);
+
+    // assert_varint!(LEU30(128), [128, 2]);
+    // assert_varint!(LEU30(16383), [191, 255]);
+
+    // assert_varint!(LEU30(16384), [192, 0, 1]);
+    // assert_varint!(LEU30(4194303), [255, 255, 255]);
+}
+
 
 #[test]
 fn test_scaler_type() {

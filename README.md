@@ -85,7 +85,7 @@ assert_eq!(amt, 15); // 15 bytes written to `buf`
 
 #### Variable-Length Integer Encoding
 
-This encoding ensures that smaller integer values need fewer bytes to encode. Support types are `LEU15`, `LEU22`, `LEU29`, Encoded in little endian.
+This encoding ensures that smaller integer values need fewer bytes to encode. Support types are `LEU15`, `LEU22`, `LEU29`, `LEU30` Encoded in little endian.
 By default, `LEU29` is used to encode length.
  
 Encoding algorithm is very straightforward,
@@ -114,6 +114,15 @@ The most significant bits of the first byte determine the byte length to encode 
 |  10    |   2    |     14      | 0..16384     |
 |  110   |   3    |     21      | 0..2097152   |
 |  111   |   4    |     29      | 0..536870912 |
+
+#### LEU30
+
+|  MSB  | Length | Usable Bits | Range         |
+| :---: | :----: | :---------: | :-----------  |
+|  00   |   1    |      6      | 0..64         |
+|  01   |   2    |     14      | 0..16384      |
+|  10   |   3    |     22      | 0..4194304    |
+|  11   |   4    |     30      | 0..1073741824 |
 
  
 For example, Binary representation of `0x_C0DE` is `0x_11_00000011_011110`

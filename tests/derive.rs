@@ -1,8 +1,9 @@
 use databuf::{config::num::LEB128, *};
 
 #[derive(Encode, Decode, PartialEq, Debug)]
-struct Object<'a, T> {
+struct Object<'a, T, Byte, const N: usize> {
     unit: Data<'a, T>,
+    buf: [Byte; N],
     r#ref: Data<'a, T>,
     data: Data<'a, T>,
 }
@@ -19,6 +20,7 @@ fn test_derive() {
     let data = "Hello, World!".as_bytes();
     let obj = Object {
         unit: Data::Unit,
+        buf: [0_u8; 42],
         r#ref: Data::Ref { data },
         data: Data::Data(42_u16),
     };

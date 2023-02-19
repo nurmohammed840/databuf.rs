@@ -4,8 +4,8 @@
 
 pub use databuf_derive::*;
 pub mod config;
-pub mod var_int;
 pub mod error;
+pub mod var_int;
 
 mod record;
 mod types;
@@ -67,3 +67,6 @@ pub trait Decode<'de>: Sized {
         Decode::decode::<CONFIG>(&mut reader)
     }
 }
+
+pub trait DecodeOwned: for<'de> Decode<'de> {}
+impl<T> DecodeOwned for T where T: for<'de> Decode<'de> {}

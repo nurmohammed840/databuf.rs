@@ -62,8 +62,8 @@ pub trait Decode<'de>: Sized {
     /// assert_eq!(foobar, FooBar { foo: 1, bar: [2, 3] });
     /// ```
     #[inline]
-    fn from_bytes<const CONFIG: u8>(data: &'de [u8]) -> Result<Self> {
-        let mut reader = data;
+    fn from_bytes<const CONFIG: u8>(bytes: &'de [u8]) -> Result<Self> {
+        let mut reader = bytes;
         Decode::decode::<CONFIG>(&mut reader)
     }
 }

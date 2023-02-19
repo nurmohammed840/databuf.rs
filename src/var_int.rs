@@ -202,10 +202,3 @@ def!(
         Ok(Self(b1 << 24 | b2 << 16 | b3 << 8 | b4))
     }
 );
-
-// fn _encode_u32_be(n: u32) -> [u8; 4] {
-//     [ n >> 24 as u8, n >> 16 as u8, n >> 8 as u8, n as u8 ]
-// }
-// fn decode_u32_be(bytes: &[u8]) -> u32 {
-//     (b[0] as u32) << 24 | (b[1] as u32) << 16 | (b[2] as u32) << 8 | (b[3] as u32)
-// }

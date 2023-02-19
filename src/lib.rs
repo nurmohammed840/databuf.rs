@@ -1,5 +1,4 @@
 #![doc = include_str!("../README.md")]
-#![allow(clippy::unusual_byte_groupings)]
 // #![cfg_attr(feature = "nightly", feature(min_specialization))]
 
 pub use databuf_derive::*;

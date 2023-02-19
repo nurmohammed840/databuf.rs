@@ -48,7 +48,7 @@ impl<T, const N: usize> Encode for [T; N]
 where
     T: Encode,
 {
-    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+    #[inline] fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
         self.iter().try_for_each(|item| item.encode::<CONFIG>(c))
     }
 }
@@ -57,7 +57,7 @@ impl<'de, T, const N: usize> Decode<'de> for [T; N]
 where
     T: Decode<'de>,
 {
-    fn decode<const CONFIG: u8>(cursor: &mut &'de [u8]) -> Result<Self> {
+    #[inline] fn decode<const CONFIG: u8>(cursor: &mut &'de [u8]) -> Result<Self> {
         utils::try_collect::<T, Vec<_>, CONFIG>(cursor, N).map(|vec| unsafe {
             debug_assert_eq!(vec.len(), N);
             <[T; N]>::try_from(vec).unwrap_unchecked()
@@ -66,7 +66,7 @@ where
 }
 
 impl<'de: 'a, 'a, const N: usize> Decode<'de> for &'a [u8; N] {
-    fn decode<const CONFIG: u8>(c: &mut &'de [u8]) -> Result<Self> {
+    #[inline] fn decode<const CONFIG: u8>(c: &mut &'de [u8]) -> Result<Self> {
         utils::get_slice(c, N).map(|bytes| unsafe {
             debug_assert_eq!(bytes.len(), N);
             <&[u8; N]>::try_from(bytes).unwrap_unchecked()

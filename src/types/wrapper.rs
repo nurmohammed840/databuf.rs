@@ -74,6 +74,7 @@ impl<'a, T> Encode for Cow<'a, T>
 where
     T: ?Sized + Encode + ToOwned,
 {
+    #[inline]
     fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
         (**self).encode::<CONFIG>(c)
     }

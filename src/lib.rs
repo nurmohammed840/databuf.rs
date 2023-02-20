@@ -1,9 +1,13 @@
 #![doc = include_str!("../README.md")]
+#![warn(missing_docs)]
 // #![cfg_attr(feature = "nightly", feature(min_specialization))]
 
 pub use databuf_derive::*;
+/// contains configuration options.
 pub mod config;
+/// This module defines the error types.
 pub mod error;
+/// This module provides types for encoding and decoding variable-length integers
 pub mod var_int;
 
 mod record;
@@ -12,7 +16,12 @@ mod utils;
 
 use std::{io, io::Write};
 
+/// It is an alias for a boxed [std::error::Error].
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
+
+/// It is an alias for a `Result<T, Error>` type.
+/// 
+/// `Error` is an alias for boxed [std::error::Error] that may occur during [Decode::decode] operation.
 pub type Result<T> = std::result::Result<T, Error>;
 
 /// This trait used to serialize the data structure into binary format.
@@ -20,6 +29,8 @@ pub trait Encode {
     /// Serialize the data into binary format.
     fn encode<const CONFIG: u8>(&self, _: &mut impl Write) -> io::Result<()>;
 
+    /// This is a convenient method used to encode a value into binary data and return it as a [Vec<u8>].
+    /// 
     /// ### Example
     ///
     /// ```
@@ -46,6 +57,8 @@ pub trait Decode<'de>: Sized {
     /// Deserialize the data from binary format.
     fn decode<const CONFIG: u8>(_: &mut &'de [u8]) -> Result<Self>;
 
+    /// This is a convenient method used to decode a value from slice.
+    /// 
     /// ### Example
     ///
     /// ```
@@ -67,5 +80,8 @@ pub trait Decode<'de>: Sized {
     }
 }
 
+/// Instead of borrowing the data returns owned value.
+/// 
+/// This trait is automatically implemented for any type that implements the [Decode] trait.
 pub trait DecodeOwned: for<'de> Decode<'de> {}
 impl<T> DecodeOwned for T where T: for<'de> Decode<'de> {}

@@ -20,21 +20,24 @@ macro_rules! read_slice {
 }
 
 impl<'de> Decode<'de> for String {
-    #[inline] fn decode<const CONFIG: u8>(c: &mut &'de [u8]) -> Result<Self> {
+    #[inline]
+    fn decode<const CONFIG: u8>(c: &mut &'de [u8]) -> Result<Self> {
         let data = read_slice!(c)?;
         String::from_utf8(data.to_vec()).map_err(Error::from)
     }
 }
 
 impl<'de: 'a, 'a> Decode<'de> for &'a str {
-    #[inline] fn decode<const CONFIG: u8>(c: &mut &'de [u8]) -> Result<Self> {
+    #[inline]
+    fn decode<const CONFIG: u8>(c: &mut &'de [u8]) -> Result<Self> {
         let data = read_slice!(c)?;
         std::str::from_utf8(data).map_err(Error::from)
     }
 }
 
 impl<'de: 'a, 'a> Decode<'de> for &'a [u8] {
-    #[inline] fn decode<const CONFIG: u8>(c: &mut &'de [u8]) -> Result<Self> {
+    #[inline]
+    fn decode<const CONFIG: u8>(c: &mut &'de [u8]) -> Result<Self> {
         read_slice!(c)
     }
 }

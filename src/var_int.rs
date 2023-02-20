@@ -1,4 +1,26 @@
-#![doc = include_str!("../spec/var_int.md")]
+//! #### Variable-Length Integer Encoding
+//! 
+//! Support types are [BEU15], [BEU22], [BEU29], [BEU30]
+//! By default, length of collections is represented with [BEU30].
+//! 
+//! Encoding algorithm is very straightforward,
+//! The most significant bits of the first byte determine the byte length to encode the number in big endian.
+//! 
+//! For example, Binary representation of `0x_C0DE` is `0x11000000_11011110`
+//! 
+//! `BEU22(0x_C0DE)` is encoded in 3 bytes:
+//! 
+//! ```yml
+//! 1st byte:  11           # MSB is 11, so read next 2 bytes
+//! 2nd byte:  11000000
+//! 3rd byte:  11011110
+//! ```
+//! 
+//! `BEU22(107)` is encoded in just 1 byte:
+//! 
+//! ```yml
+//! 1st byte: 0b01101011    # MSB is 0, So we don't have to read extra bytes.
+//! ```
 
 use crate::*;
 use std::{
@@ -7,12 +29,16 @@ use std::{
 };
 
 macro_rules! def {
-    [$name:ident($ty:ty), BITS: $BITS:literal, UsizeTryFromErr: $err: ty, $encode:item, $decode:item] => {
+    [$(#[$doc:meta])* $name:ident($ty:ty), BITS: $BITS:literal, UsizeTryFromErr: $err: ty, $encode:item, $decode:item] => {
+        $(#[$doc])*
         #[derive(Default, Debug, Clone, Copy, PartialEq, Eq, Hash, PartialOrd, Ord)]
         pub struct $name(pub $ty);
         impl $name {
+            /// The largest value that can be represented by this integer type.
             pub const MAX: $ty = (1 << $BITS) - 1;
+            /// The smallest value that can be represented by this integer type.
             pub const MIN: $ty = 0;
+            /// The size of this integer type in bits.
             pub const BITS: u32 = $BITS;
         }
         impl Encode for $name { $encode }
@@ -46,6 +72,14 @@ macro_rules! def {
 }
 
 def!(
+    /// [BEU15] is variable-length encoder type for non-negative integer values.
+    /// 
+    /// The discriminator of `enum` is represented by [BEU15].
+    /// 
+    /// |  MSB  | Length | Usable Bits | Range    |
+    /// | :---: | :----: | :---------: | :------- |
+    /// |   0   |   1    |      7      | 0..128   |
+    /// |   1   |   2    |     15      | 0..32768 |
     BEU15(u16),
     BITS: 15,
     UsizeTryFromErr: Infallible,
@@ -72,6 +106,13 @@ def!(
 );
 
 def!(
+    /// [BEU22] is variable-length encoder type for non-negative integer values.
+    /// 
+    /// |  MSB  | Length | Usable Bits | Range      |
+    /// | :---: | :----: | :---------: | :--------- |
+    /// |  0    |   1    |      7      | 0..128     |
+    /// |  10   |   2    |     14      | 0..16384   |
+    /// |  11   |   3    |     22      | 0..4194304 |
     BEU22(u32),
     BITS: 22,
     UsizeTryFromErr: std::num::TryFromIntError,
@@ -105,7 +146,16 @@ def!(
         Ok(Self(((b1 & 0x3F) << 16) | (b2 << 8) | b3))
     }
 );
+
 def!(
+    /// [BEU29] is variable-length encoder type for non-negative integer values.
+    /// 
+    /// |  MSB   | Length | Usable Bits | Range        |
+    /// | :---:  | :----: | :---------: | :----------- |
+    /// |  0     |   1    |      7      | 0..128       |
+    /// |  10    |   2    |     14      | 0..16384     |
+    /// |  110   |   3    |     21      | 0..2097152   |
+    /// |  111   |   4    |     29      | 0..536870912 |
     BEU29(u32),
     BITS: 29,
     UsizeTryFromErr: std::num::TryFromIntError,
@@ -120,7 +170,7 @@ def!(
             return c.write_all(&[0x80 | b3, b4])
         }
         let b2 = (num >> 16) as u8; // next 8 bits
-        // (110) 11111 11111111 11111111 
+        // (110) 11111 11111111 11111111
         if num < (1 << 21) {
             return c.write_all(&[0xC0 | b2, b3, b4])
         }
@@ -133,7 +183,7 @@ def!(
         let b1 = u8::decode::<CONFIG>(c)? as u32;
         // (0) 1111111
         if b1 >> 7 == 0b0 { return Ok(Self(b1)) }
-        // (10) 111111 11111111 
+        // (10) 111111 11111111
         if b1 >> 6 == 0b10 {
             let b2 = u8::decode::<CONFIG>(c)? as u32;
             return Ok(Self((b1 & 0x3F) << 8 | b2));
@@ -144,7 +194,7 @@ def!(
             let (b2, b3) = (*b2 as u32, *b3 as u32);
             return Ok(Self((b1 & 0b11111) << 16 | b2 << 8 | b3));
         }
-        // (111) 11111 | 11111111 | 11111111 | 11111111 
+        // (111) 11111 | 11111111 | 11111111 | 11111111
         let [b2, b3, b4] = <&[u8; 3]>::decode::<CONFIG>(c)?;
         let (b2, b3, b4) = (*b2 as u32, *b3 as u32, *b4 as u32);
         Ok(Self((b1 & 0b11111) << 24 | b2 << 16 | b3 << 8 | b4))
@@ -152,6 +202,16 @@ def!(
 );
 
 def!(
+    /// [BEU30] is variable-length encoder type for non-negative integer values.
+    /// 
+    /// By default, The length of collections is represented with [BEU30].
+    /// 
+    /// |  MSB  | Length | Usable Bits | Range         |
+    /// | :---: | :----: | :---------: | :-----------  |
+    /// |  00   |   1    |      6      | 0..64         |
+    /// |  01   |   2    |     14      | 0..16384      |
+    /// |  10   |   3    |     22      | 0..4194304    |
+    /// |  11   |   4    |     30      | 0..1073741824 |
     BEU30(u32),
     BITS: 30,
     UsizeTryFromErr: std::num::TryFromIntError,
@@ -168,7 +228,7 @@ def!(
             return c.write_all(&[0x40 | b3, b4])
         }
         let b2 = (num >> 16) as u8;
-        // (10) 111111 11111111 11111111 
+        // (10) 111111 11111111 11111111
         if num < (1 << 22) {
             return c.write_all(&[0x80 | b2, b3, b4])
         }
@@ -190,7 +250,7 @@ def!(
             let b2 = u8::decode::<CONFIG>(c)? as u32;
             return Ok(Self(b1 << 8 | b2));
         }
-        // (10) 111111 11111111 11111111 
+        // (10) 111111 11111111 11111111
         if len == 2 {
             let [b2, b3] = <&[u8; 2]>::decode::<CONFIG>(c)?;
             let (b2, b3) = (*b2 as u32, *b3 as u32);

@@ -187,7 +187,7 @@ pub fn decode(input: TokenStream) -> TokenStream {
                 let discriminant: u16 = ::databuf::var_int::BEU15::decode::<C>(c)?.0;
                 match discriminant {
                     #(#recurse)*
-                    _ => return ::std::result::Result::Err(Box::new(
+                    _ => return ::std::result::Result::Err(::std::boxed::Box::new(
                         ::databuf::error::UnknownDiscriminant{
                             ident: ::std::concat!(::std::module_path!(), "::", #ident),
                             discriminant

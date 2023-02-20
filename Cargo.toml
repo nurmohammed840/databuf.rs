@@ -3,7 +3,7 @@ members = ["databuf_derive"]
 
 [package]
 name = "databuf"
-version = "0.3.0"
+version = "0.3.1"
 edition = "2021"
 
 license = "Apache-2.0"
@@ -13,4 +13,4 @@ keywords = ["binary", "encode", "decode", "serialize", "deserialize"]
 description = "This library used to serialize and deserialize structured data in binary format"
 
 [dependencies]
-databuf-derive = { path = "./databuf_derive", version = "0.3.0" }
+databuf-derive = { path = "./databuf_derive", version = "0.3.1" }

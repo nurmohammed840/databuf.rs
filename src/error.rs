@@ -1,21 +1,30 @@
 use std::error::Error;
-use std::fmt::{Display, self};
+use std::fmt::{self, Display};
 
+/// `enum` uses a discriminator to distinguish its variants.
+/// 
+/// This `UnknownDiscriminant` can happen when decoding an `enum` type that has an unknown discriminator value.
 #[derive(Debug)]
 pub struct UnknownDiscriminant {
+    /// Path of the `enum` struct
     pub ident: &'static str,
+    /// Unrecognized discriminant value
     pub discriminant: u16,
 }
 
+/// Occurs when there are not enough bytes in the input buffer to complete the decoding process.
 #[derive(Debug)]
 pub struct InsufficientBytes;
 
+/// Occurs when invalid utf8 character found during the decoding process.
 #[derive(Debug)]
 pub struct InvalidChar;
 
+/// Occurs when the integer value exceeds the maximum value that can be represented by the target integer type.
 #[derive(Debug)]
 pub struct IntegerOverflow;
 
+/// Occurs during decoding when a [bool] value is expected, but the byte contains a value that is not `0` or `1`.
 #[derive(Debug)]
 pub struct InvalidBoolValue;
 
@@ -27,7 +36,10 @@ impl Error for InvalidBoolValue {}
 
 impl Display for UnknownDiscriminant {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        let Self { ident, discriminant } = self;
+        let Self {
+            ident,
+            discriminant,
+        } = self;
         writeln!(f, "unknown `{discriminant}` discriminator of `{ident}`")
     }
 }

@@ -20,9 +20,9 @@ use std::{io, io::Write};
 pub type Error = Box<dyn std::error::Error + Send + Sync>;
 
 /// It is an alias for a `Result<T, Error>` type.
-/// 
+///
 /// `Error` is an alias for boxed [std::error::Error] that may occur during [Decode::decode] operation.
-pub type Result<T> = std::result::Result<T, Error>;
+pub type Result<T, E = Error> = std::result::Result<T, E>;
 
 /// This trait used to serialize the data structure into binary format.
 pub trait Encode {
@@ -30,7 +30,7 @@ pub trait Encode {
     fn encode<const CONFIG: u8>(&self, _: &mut impl Write) -> io::Result<()>;
 
     /// This is a convenient method used to encode a value into binary data and return it as a [Vec<u8>].
-    /// 
+    ///
     /// ### Example
     ///
     /// ```
@@ -58,7 +58,7 @@ pub trait Decode<'de>: Sized {
     fn decode<const CONFIG: u8>(_: &mut &'de [u8]) -> Result<Self>;
 
     /// This is a convenient method used to decode a value from slice.
-    /// 
+    ///
     /// ### Example
     ///
     /// ```
@@ -81,7 +81,7 @@ pub trait Decode<'de>: Sized {
 }
 
 /// Instead of borrowing the data returns owned value.
-/// 
+///
 /// This trait is automatically implemented for any type that implements the [Decode] trait.
 pub trait DecodeOwned: for<'de> Decode<'de> {}
 impl<T> DecodeOwned for T where T: for<'de> Decode<'de> {}

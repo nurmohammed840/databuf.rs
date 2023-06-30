@@ -1,9 +1,9 @@
 [workspace]
-members = ["databuf_derive"]
+members = ["databuf_derive", "databuf_derive_impl"]
 
 [package]
 name = "databuf"
-version = "0.3.1"
+version = "0.3.2"
 edition = "2021"
 
 license = "Apache-2.0"

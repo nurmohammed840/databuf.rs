@@ -1,0 +1,12 @@
+[package]
+name = "databuf_derive_impl"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+syn = "2"
+quote = "1"
+proc-macro2 = "1"
+
+[dev-dependencies]
+# syn = { version = "2", features = ["extra-traits"] }

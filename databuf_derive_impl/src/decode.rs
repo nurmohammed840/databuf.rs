@@ -12,7 +12,7 @@ pub fn expand(crate_path: impl ToTokens, input: &DeriveInput, mut output: &mut T
 
     match data {
         Data::Struct(v) => {
-            quote_token! {Self body}
+            quote_each_token! {body let output = Self }
             decode_fields(&v.fields, &mut body);
         }
         Data::Enum(enum_data) => {
@@ -43,7 +43,7 @@ pub fn expand(crate_path: impl ToTokens, input: &DeriveInput, mut output: &mut T
                     }
                 }
             });
-            quote_token! {output body};
+            // quote_each_token! {body  };
         }
         Data::Union(_) => panic!("`Decode` implementation for `union` is not yet stabilized"),
     };
@@ -69,11 +69,9 @@ pub fn expand(crate_path: impl ToTokens, input: &DeriveInput, mut output: &mut T
     group!(output, Brace, s, {
         quote_each_token! {s fn decode<const C: u8>(c: &mut &'decode [u8]) -> #crate_path::Result<Self> }
         group!(s, Brace, s, {
-            quote_each_token! {s
-                use #crate_path::Decode as D;
-                ::std::result::Result::Ok
-            }
-            group!(s, Parenthesis, s, { s.extend(body) });
+            quote_each_token! {s use #crate_path::Decode as D; }
+            s.extend(body);
+            quote_each_token! {s ; ::std::result::Result::Ok(output) }
         });
     });
 }

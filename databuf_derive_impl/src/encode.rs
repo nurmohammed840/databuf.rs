@@ -1,4 +1,5 @@
 use super::*;
+use quote::quote;
 
 pub fn expand(crate_path: impl ToTokens, input: &DeriveInput, mut output: &mut TokenStream) {
     let DeriveInput {

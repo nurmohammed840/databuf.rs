@@ -120,9 +120,9 @@ fn test_scaler_type() {
     }
     for word in [
         0x_DEAD_BEEF,
-        0x_Faded_Face,
-        0x_BAD_F00D,
-        0x_C01D_C0FFEE,
+        0x000F_aded_Face,
+        0x0BAD_F00D,
+        0x00C0_1DC0_FFEE,
         0x_C0CA_C01A,
     ] {
         let bytes = word.to_bytes::<LE>();

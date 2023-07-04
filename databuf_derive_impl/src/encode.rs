@@ -1,8 +1,5 @@
 use super::*;
-use syn::{
-    punctuated::{Iter, Punctuated},
-    token::Comma,
-};
+use syn::punctuated::Iter;
 
 pub fn expand(crate_path: &TokenStream, input: &DeriveInput, o: &mut TokenStream) {
     let DeriveInput {
@@ -12,7 +9,7 @@ pub fn expand(crate_path: &TokenStream, input: &DeriveInput, o: &mut TokenStream
         ..
     } = input;
 
-    let mut body = quote(|o| {
+    let body = quote(|o| {
         match data {
             Data::Struct(object) => match &object.fields {
                 Fields::Named(fields) => fields.named.iter().for_each(|f| {
@@ -32,7 +29,7 @@ pub fn expand(crate_path: &TokenStream, input: &DeriveInput, o: &mut TokenStream
                         let index = Index::from(i);
                         let mut encoders = Token(TokenStream::new());
 
-                        let mut alias = quote(|o| {
+                        let alias = quote(|o| {
                             match &v.fields {
                                 Fields::Named(f) => {
                                     let alias = make_alias(true, f.named.iter(), &mut encoders);

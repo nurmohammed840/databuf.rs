@@ -1,7 +1,6 @@
 use super::*;
-use quote2::group;
 
-pub fn expand(crate_path: &TokenStream, input: &DeriveInput, mut output: &mut TokenStream) {
+pub fn expand(crate_path: &TokenStream, input: &DeriveInput, output: &mut TokenStream) {
     let DeriveInput {
         data,
         ident,
@@ -33,7 +32,7 @@ pub fn expand(crate_path: &TokenStream, input: &DeriveInput, mut output: &mut To
                 quote!(o, {
                     let discriminant: u16 = #crate_path::var_int::BEU15::decode::<C>(c)?.0;
                     let output = match discriminant {
-                        #items,
+                        #items
                         _ => {
                             return ::std::result::Result::Err(::std::boxed::Box::new(
                                 #crate_path::error::UnknownDiscriminant {
@@ -55,8 +54,8 @@ pub fn expand(crate_path: &TokenStream, input: &DeriveInput, mut output: &mut To
 
     // Add a bound `T: Decode<'de>` to every type parameter of `T`.
     let de_lt = Lifetime::new("'decode", Span::call_site());
-    let mut lt_params = (LifetimeParam::new(de_lt));
-    let mut params = (generics.params.clone());
+    let mut lt_params = LifetimeParam::new(de_lt);
+    let mut params = generics.params.clone();
     for param in params.iter_mut() {
         match param {
             GenericParam::Type(ty) => ty.bounds.push(parse_quote!(#crate_path::Decode<'decode>)),
@@ -65,10 +64,9 @@ pub fn expand(crate_path: &TokenStream, input: &DeriveInput, mut output: &mut To
         }
     }
 
-    let mut output = TokenStream::new();
     quote!(output, {
         impl <#lt_params, #params> #crate_path::Decode<'decode> for #ident #ty_generics #where_clause {
-            fn decode<const C: u8>(c: &mut &'decode [u8]) -> crate_path::Result<Self> {
+            fn decode<const C: u8>(c: &mut &'decode [u8]) -> #crate_path::Result<Self> {
                 use #crate_path::Decode as D;
                 #body;
                 ::std::result::Result::Ok(output)

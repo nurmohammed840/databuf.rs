@@ -7,4 +7,4 @@ pub use syn;
 
 use proc_macro2::*;
 use quote2::{quote, IntoTokens, Quote, Token};
-use syn::{__private::parse_quote, spanned::Spanned, *};
+use syn::{spanned::Spanned, *};

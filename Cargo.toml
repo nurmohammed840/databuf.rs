@@ -12,5 +12,7 @@ repository = "https://github.com/nurmohammed840/databuf.rs"
 keywords = ["binary", "encode", "decode", "serialize", "deserialize"]
 description = "This library used to serialize and deserialize structured data in binary format"
 
+exclude = ["/databuf_derive", "/databuf_derive_impl", "/tests",  ".*"]
+
 [dependencies]
 databuf-derive = { path = "./databuf_derive", version = "0.4" }

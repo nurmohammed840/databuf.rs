@@ -10,7 +10,7 @@ macro_rules! impls {
     [Encode for $($name:ty),*] => ($(
         impl<T: Encode + ?Sized> Encode for $name {
             #[inline]
-            fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> { (**self).encode::<CONFIG>(c) }
+            fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> { (**self).encode::<CONFIG>(c) }
         }
     )*);
     [Decode for $($name:ident),*] => ($(
@@ -42,7 +42,7 @@ impl_sp!(Box, Rc, Arc);
 
 impl<T> Encode for std::marker::PhantomData<T> {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, _: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, _: &mut (impl Write + ?Sized)) -> io::Result<()> {
         Ok(())
     }
 }
@@ -56,14 +56,14 @@ impl<T> Decode<'_> for std::marker::PhantomData<T> {
 
 impl<T: Encode + Copy> Encode for Cell<T> {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         self.get().encode::<CONFIG>(c)
     }
 }
 
 impl<T: Encode> Encode for RefCell<T> {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         self.try_borrow()
             .map_err(utils::invalid_input)?
             .encode::<CONFIG>(c)
@@ -75,7 +75,7 @@ where
     T: ?Sized + Encode + ToOwned,
 {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         (**self).encode::<CONFIG>(c)
     }
 }

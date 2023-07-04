@@ -3,7 +3,7 @@ use std::mem::size_of;
 
 impl Encode for bool {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, writer: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, writer: &mut (impl Write + ?Sized)) -> io::Result<()> {
         writer.write_all(&[*self as u8])
     }
 }
@@ -21,7 +21,7 @@ impl Decode<'_> for bool {
 
 impl Encode for char {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         u32::from(*self).encode::<CONFIG>(c)
     }
 }
@@ -37,7 +37,7 @@ impl Decode<'_> for char {
 
 impl Encode for u8 {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, writer: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, writer: &mut (impl Write + ?Sized)) -> io::Result<()> {
         writer.write_all(&[*self])
     }
 }
@@ -59,7 +59,7 @@ impl Decode<'_> for u8 {
 
 impl Encode for i8 {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, writer: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, writer: &mut (impl Write + ?Sized)) -> io::Result<()> {
         writer.write_all(&[*self as u8])
     }
 }
@@ -134,7 +134,7 @@ macro_rules! leb128 {
 macro_rules! impl_data_type_for {
     [$catagory:tt => $($num:tt)*] => ($(
         impl Encode for $num {
-            fn encode<const CONFIG: u8>(&self, writer: &mut impl Write) -> io::Result<()> {
+            fn encode<const CONFIG: u8>(&self, writer: &mut (impl Write + ?Sized)) -> io::Result<()> {
                 match CONFIG & config::num::GET {
                     config::num::LE => writer.write_all(&self.to_le_bytes()),
                     config::num::BE => writer.write_all(&self.to_be_bytes()),

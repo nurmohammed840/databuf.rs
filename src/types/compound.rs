@@ -8,7 +8,7 @@ macro_rules! impl_data_type_for_typle {
         where
             $($name: Encode,)*
         {
-            #[inline] fn encode<const CONFIG: u8>(&self, _c: &mut impl Write) -> io::Result<()> {
+            #[inline] fn encode<const CONFIG: u8>(&self, _c: &mut (impl Write + ?Sized)) -> io::Result<()> {
                 $(self.$idx.encode::<CONFIG>(_c)?;)*
                 Ok(())
             }
@@ -49,7 +49,7 @@ where
     T: Encode,
 {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         self.iter().try_for_each(|item| item.encode::<CONFIG>(c))
     }
 }

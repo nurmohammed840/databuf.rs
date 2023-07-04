@@ -61,13 +61,20 @@ pub fn expand(crate_path: &TokenStream, input: &DeriveInput, o: &mut TokenStream
         };
     });
 
-    let mut generics = generics.clone();
-    add_trait_bounds(&mut generics, parse_quote!(#crate_path::Encode));
-    let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
+    let (_, ty_generics, where_clause) = generics.split_for_impl();
+
+    let bound: TypeParamBound = parse_quote!(#crate_path::Encode);
+    let mut params = generics.params.clone();
+
+    for param in params.iter_mut() {
+        if let GenericParam::Type(ty) = param {
+            ty.bounds.push(bound.clone())
+        }
+    }
 
     quote!(o, {
-        impl #impl_generics #crate_path::Encode for #ident #ty_generics #where_clause {
-            fn encode<const C: u8>(&self, c: &mut impl ::std::io::Write) -> ::std::io::Result<()> {
+        impl<#params> #crate_path::Encode for #ident #ty_generics #where_clause {
+            fn encode<const C: u8>(&self, c: &mut (impl ::std::io::Write + ?::std::marker::Sized)) -> ::std::io::Result<()> {
                 use #crate_path::Encode as E;
                 #body
                 ::std::result::Result::Ok(())
@@ -111,12 +118,4 @@ fn encode_field(f: &Field, field: impl IntoTokens, o: &mut TokenStream) {
     quote!(o, {
         E::encode::<C>(#maybe_ref #field, c)?;
     });
-}
-
-fn add_trait_bounds(generics: &mut Generics, bound: TypeParamBound) {
-    for param in &mut generics.params {
-        if let GenericParam::Type(ty) = param {
-            ty.bounds.push(bound.clone());
-        }
-    }
 }

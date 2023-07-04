@@ -27,7 +27,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 /// This trait used to serialize the data structure into binary format.
 pub trait Encode {
     /// Serialize the data into binary format.
-    fn encode<const CONFIG: u8>(&self, _: &mut impl Write) -> io::Result<()>;
+    fn encode<const CONFIG: u8>(&self, _: &mut (impl Write + ?Sized)) -> io::Result<()>;
 
     /// This is a convenient method used to encode a value into binary data and return it as a [Vec<u8>].
     ///

@@ -3,7 +3,7 @@ use super::*;
 macro_rules! impl_encoder_for {
     [$($ty:ty),*] => {$(
         impl Encode for $ty {
-            #[inline] fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+            #[inline] fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
                 encode_len!(self, c);
                 c.write_all(self.as_ref())
             }

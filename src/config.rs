@@ -1,8 +1,8 @@
 #![allow(clippy::unusual_byte_groupings)]
 
 /// Default configuration:
-/// 
-/// - Numbers are represented in little endian byte order 
+///
+/// - Numbers are represented in little endian byte order
 /// - Length of the collection is encoded with [crate::var_int::BEU30]
 pub const DEFAULT: u8 = num::LE | len::BEU30;
 
@@ -44,13 +44,13 @@ pub mod len {
 
     /// length is represented with [crate::var_int::BEU30] big-endian unsigned 30-bit integer.
     pub const BEU30: u8 = 0b_00_000;
-    
+
     /// length is represented with [crate::var_int::BEU29] big-endian unsigned 29-bit integer.
     pub const BEU29: u8 = 0b_01_000;
-    
+
     /// length is represented with [crate::var_int::BEU22] big-endian unsigned 22-bit integer.
     pub const BEU22: u8 = 0b_10_000;
-    
+
     /// length is represented with [crate::var_int::BEU15] big-endian unsigned 15-bit integer.
     pub const BEU15: u8 = 0b_11_000;
 }

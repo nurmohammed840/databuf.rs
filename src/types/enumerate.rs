@@ -5,7 +5,7 @@ where
     T: Encode,
 {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         match self {
             Some(val) => {
                 c.write_all(&[1])?;
@@ -32,7 +32,7 @@ where
     E: Encode,
 {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         match self {
             Ok(val) => {
                 c.write_all(&[1])?;

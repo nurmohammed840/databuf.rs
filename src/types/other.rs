@@ -3,7 +3,7 @@ use std::ops::{Range, RangeInclusive};
 
 impl<T: Encode> Encode for Range<T> {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         self.start.encode::<CONFIG>(c)?;
         self.end.encode::<CONFIG>(c)
     }
@@ -20,7 +20,7 @@ impl<'de, T: Decode<'de>> Decode<'de> for Range<T> {
 
 impl<T: Encode> Encode for RangeInclusive<T> {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         self.start().encode::<CONFIG>(c)?;
         self.end().encode::<CONFIG>(c)
     }

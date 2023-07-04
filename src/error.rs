@@ -2,7 +2,7 @@ use std::error::Error;
 use std::fmt::{self, Display};
 
 /// `enum` uses a discriminator to distinguish its variants.
-/// 
+///
 /// This `UnknownDiscriminant` can happen when decoding an `enum` type that has an unknown discriminator value.
 #[derive(Debug)]
 pub struct UnknownDiscriminant {

@@ -1,3 +1,5 @@
+use std::io::Write;
+
 use databuf::{config::num::LEB128, *};
 
 #[derive(Encode, Decode, PartialEq, Debug)]
@@ -24,7 +26,11 @@ fn test_derive() {
         r#ref: Data::Ref { data },
         data: Data::Data(42_u16, 24),
     };
-    let bytes = obj.to_bytes::<LEB128>();
+    let mut bytes = vec![];
+    {
+        let buf: &mut dyn Write = &mut bytes;
+        obj.encode::<LEB128>(buf).unwrap();
+    }
     let new_obj = Object::from_bytes::<LEB128>(&bytes).unwrap();
     assert_eq!(obj, new_obj);
 }

@@ -1,23 +1,23 @@
 //! #### Variable-Length Integer Encoding
-//! 
+//!
 //! Support types are [BEU15], [BEU22], [BEU29], [BEU30]
 //! By default, length of collections is represented with [BEU30].
-//! 
+//!
 //! Encoding algorithm is very straightforward,
 //! The most significant bits of the first byte determine the byte length to encode the number in big endian.
-//! 
+//!
 //! For example, Binary representation of `0x_C0DE` is `0x11000000_11011110`
-//! 
+//!
 //! `BEU22(0x_C0DE)` is encoded in 3 bytes:
-//! 
+//!
 //! ```yml
 //! 1st byte:  11           # MSB is 11, so read next 2 bytes
 //! 2nd byte:  11000000
 //! 3rd byte:  11011110
 //! ```
-//! 
+//!
 //! `BEU22(107)` is encoded in just 1 byte:
-//! 
+//!
 //! ```yml
 //! 1st byte: 0b01101011    # MSB is 0, So we don't have to read extra bytes.
 //! ```
@@ -73,9 +73,9 @@ macro_rules! def {
 
 def!(
     /// [BEU15] is variable-length encoder type for non-negative integer values.
-    /// 
+    ///
     /// The discriminator of `enum` is represented by [BEU15].
-    /// 
+    ///
     /// |  MSB  | Length | Usable Bits | Range    |
     /// | :---: | :----: | :---------: | :------- |
     /// |   0   |   1    |      7      | 0..128   |
@@ -83,7 +83,7 @@ def!(
     BEU15(u16),
     BITS: 15,
     UsizeTryFromErr: Infallible,
-    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         let num = self.0;
         let b2 = num as u8;
         // (0) 1111111
@@ -107,7 +107,7 @@ def!(
 
 def!(
     /// [BEU22] is variable-length encoder type for non-negative integer values.
-    /// 
+    ///
     /// |  MSB  | Length | Usable Bits | Range      |
     /// | :---: | :----: | :---------: | :--------- |
     /// |  0    |   1    |      7      | 0..128     |
@@ -116,7 +116,7 @@ def!(
     BEU22(u32),
     BITS: 22,
     UsizeTryFromErr: std::num::TryFromIntError,
-    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         let num = self.0;
         let b3 = num as u8;
         // (0) 1111111
@@ -149,7 +149,7 @@ def!(
 
 def!(
     /// [BEU29] is variable-length encoder type for non-negative integer values.
-    /// 
+    ///
     /// |  MSB   | Length | Usable Bits | Range        |
     /// | :---:  | :----: | :---------: | :----------- |
     /// |  0     |   1    |      7      | 0..128       |
@@ -159,7 +159,7 @@ def!(
     BEU29(u32),
     BITS: 29,
     UsizeTryFromErr: std::num::TryFromIntError,
-    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         let num = self.0;
         let b4 = num as u8;
         // (0) 1111111
@@ -203,9 +203,9 @@ def!(
 
 def!(
     /// [BEU30] is variable-length encoder type for non-negative integer values.
-    /// 
+    ///
     /// By default, The length of collections is represented with [BEU30].
-    /// 
+    ///
     /// |  MSB  | Length | Usable Bits | Range         |
     /// | :---: | :----: | :---------: | :-----------  |
     /// |  00   |   1    |      6      | 0..64         |
@@ -215,7 +215,7 @@ def!(
     BEU30(u32),
     BITS: 30,
     UsizeTryFromErr: std::num::TryFromIntError,
-    fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         let num = self.0;
         let b4 = num as u8;
         // (00) 111111

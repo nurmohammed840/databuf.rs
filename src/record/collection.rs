@@ -12,7 +12,7 @@ macro_rules! impl_v2 {
         impl<'de, $($ty)*> Decode<'de> for $name { impl_v2! {@DecoderBody} }
     };
     [@EncoderBody] => {
-        fn encode<const CONFIG: u8>(&self, c: &mut impl Write) -> io::Result<()> {
+        fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
             encode_len!(self, c);
             self.iter().try_for_each(|item| item.encode::<CONFIG>(c))
         }

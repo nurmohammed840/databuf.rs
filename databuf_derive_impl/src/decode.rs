@@ -1,6 +1,5 @@
-use quote2::{group, QuoteFn};
-
 use super::*;
+use quote2::group;
 
 pub fn expand(crate_path: &TokenStream, input: &DeriveInput, mut output: &mut TokenStream) {
     let DeriveInput {
@@ -78,7 +77,7 @@ pub fn expand(crate_path: &TokenStream, input: &DeriveInput, mut output: &mut To
     });
 }
 
-fn decode_fields<'a>(fields: &'a Fields) -> QuoteFn<impl FnOnce(&mut TokenStream) + 'a> {
+fn decode_fields<'a>(fields: &'a Fields) -> Token<impl FnOnce(&mut TokenStream) + 'a> {
     quote(move |o: &mut TokenStream| match fields {
         Fields::Named(fields) => {
             let fields = quote(|o| {
@@ -94,7 +93,7 @@ fn decode_fields<'a>(fields: &'a Fields) -> QuoteFn<impl FnOnce(&mut TokenStream
         Fields::Unnamed(fields) => {
             let de = quote(|o| {
                 for _ in fields.unnamed.iter() {
-                    decode_expr().0(o)
+                    decode_expr()(o)
                 }
             });
             quote!(o, [( #de )]);
@@ -103,8 +102,8 @@ fn decode_fields<'a>(fields: &'a Fields) -> QuoteFn<impl FnOnce(&mut TokenStream
     })
 }
 
-fn decode_expr() -> QuoteFn<impl Fn(&mut TokenStream)> {
-    QuoteFn(|o: &mut TokenStream| {
+fn decode_expr() -> Token<impl Fn(&mut TokenStream)> {
+    Token(|o: &mut TokenStream| {
         quote!(o, {
             D::decode::<C>(c)?,
         });

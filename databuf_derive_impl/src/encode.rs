@@ -1,5 +1,4 @@
 use super::*;
-use quote2::{IntoTokens, QuoteFn};
 use syn::{
     punctuated::{Iter, Punctuated},
     token::Comma,
@@ -31,7 +30,7 @@ pub fn expand(crate_path: &TokenStream, input: &DeriveInput, o: &mut TokenStream
                     for (i, v) in enum_data.variants.iter().enumerate() {
                         let named = &v.ident;
                         let index = Index::from(i);
-                        let mut encoders = TokenStream::new();
+                        let mut encoders = Token(TokenStream::new());
 
                         let mut alias = quote(|o| {
                             match &v.fields {
@@ -66,7 +65,7 @@ pub fn expand(crate_path: &TokenStream, input: &DeriveInput, o: &mut TokenStream
     });
 
     let mut generics = generics.clone();
-    // add_trait_bounds(&mut generics, parse_quote(encode_trait.clone()));
+    add_trait_bounds(&mut generics, parse_quote!(#crate_path::Encode));
     let (impl_generics, ty_generics, where_clause) = generics.split_for_impl();
 
     quote!(o, {
@@ -84,7 +83,7 @@ fn make_alias<'a>(
     is_named: bool,
     fields: Iter<'a, Field>,
     encoders: &'a mut TokenStream,
-) -> QuoteFn<impl FnOnce(&mut TokenStream) + 'a> {
+) -> Token<impl FnOnce(&mut TokenStream) + 'a> {
     quote(move |o| {
         for (i, f) in fields.enumerate() {
             let alias = Ident::new(&format!("_{i}"), Span::call_site());
@@ -101,7 +100,7 @@ fn make_alias<'a>(
     })
 }
 
-fn field(name: impl IntoTokens) -> QuoteFn<impl FnOnce(&mut TokenStream)> {
+fn field(name: impl IntoTokens) -> Token<impl FnOnce(&mut TokenStream)> {
     quote(move |o| {
         quote!(o, { self.#name });
     })

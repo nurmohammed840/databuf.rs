@@ -115,8 +115,8 @@ fn encode_field(f: &Field, field: impl IntoTokens, o: &mut TokenStream) {
 
 fn add_trait_bounds(generics: &mut Generics, bound: TypeParamBound) {
     for param in &mut generics.params {
-        if let GenericParam::Type(type_param) = param {
-            type_param.bounds.push(bound.clone());
+        if let GenericParam::Type(ty) = param {
+            ty.bounds.push(bound.clone());
         }
     }
 }

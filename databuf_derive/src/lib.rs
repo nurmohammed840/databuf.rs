@@ -1,5 +1,6 @@
 use databuf_derive_impl::{
     quote2::{quote, Quote},
+    syn::DeriveInput,
     *,
 };
 use proc_macro::TokenStream;
@@ -12,18 +13,22 @@ fn crate_path() -> TokenStream2 {
     o
 }
 
+fn expand<F>(input: TokenStream, f: F) -> TokenStream
+where
+    F: FnOnce(&TokenStream2, &DeriveInput, &mut TokenStream2),
+{
+    let input: DeriveInput = parse_macro_input!(input);
+    let mut output = TokenStream2::new();
+    f(&crate_path(), &input, &mut output);
+    TokenStream::from(output)
+}
+
 #[proc_macro_derive(Encode)]
 pub fn encode(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input);
-    let mut output = TokenStream2::new();
-    encode::expand(&crate_path(), &input, &mut output);
-    TokenStream::from(output)
+    expand(input, encode::expand)
 }
 
 #[proc_macro_derive(Decode)]
 pub fn decode(input: TokenStream) -> TokenStream {
-    let input = parse_macro_input!(input);
-    let mut output = TokenStream2::new();
-    decode::expand(&crate_path(), &input, &mut output);
-    TokenStream::from(output)
+    expand(input, decode::expand)
 }

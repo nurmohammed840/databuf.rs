@@ -51,7 +51,7 @@ pub fn expand(crate_path: &TokenStream, input: &DeriveInput, o: &mut TokenStream
                     }
                 });
                 quote!(o, {
-                    use ::databuf::var_int::BEU15;
+                    use #crate_path::var_int::BEU15;
                     match self {
                         #items
                     }

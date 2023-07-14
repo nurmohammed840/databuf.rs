@@ -62,7 +62,7 @@ pub fn expand(crate_path: &TokenStream, input: &DeriveInput, output: &mut TokenS
 
     quote!(output, {
         impl <#lifetime, #params> #crate_path::Decode<'decode> for #ident #ty_generics #where_clause {
-            fn decode<const C: u8>(c: &mut &'decode [u8]) -> #crate_path::Result<Self> {
+            fn decode<const C: u16>(c: &mut &'decode [u8]) -> #crate_path::Result<Self> {
                 use #crate_path::Decode as D;
                 #body;
                 ::std::result::Result::Ok(output)

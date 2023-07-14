@@ -7,7 +7,7 @@ use databuf::{
 
 #[test]
 fn test_leb128() {
-    fn to_bytes<const CONFIG: u8>(
+    fn to_bytes<const CONFIG: u16>(
         num: impl Encode + for<'a> Decode<'a> + std::cmp::PartialEq + std::fmt::Debug,
     ) -> Vec<u8> {
         let bytes = num.to_bytes::<CONFIG>();

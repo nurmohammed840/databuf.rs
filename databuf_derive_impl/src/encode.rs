@@ -74,7 +74,7 @@ pub fn expand(crate_path: &TokenStream, input: &DeriveInput, o: &mut TokenStream
 
     quote!(o, {
         impl<#params> #crate_path::Encode for #ident #ty_generics #where_clause {
-            fn encode<const C: u8>(&self, c: &mut (impl ::std::io::Write + ?::std::marker::Sized)) -> ::std::io::Result<()> {
+            fn encode<const C: u16>(&self, c: &mut (impl ::std::io::Write + ?::std::marker::Sized)) -> ::std::io::Result<()> {
                 use #crate_path::Encode as E;
                 #body
                 ::std::result::Result::Ok(())

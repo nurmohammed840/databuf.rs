@@ -3,14 +3,14 @@ use std::mem::size_of;
 
 impl Encode for bool {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, writer: &mut (impl Write + ?Sized)) -> io::Result<()> {
+    fn encode<const CONFIG: u16>(&self, writer: &mut (impl Write + ?Sized)) -> io::Result<()> {
         writer.write_all(&[*self as u8])
     }
 }
 
 impl Decode<'_> for bool {
     #[inline]
-    fn decode<const CONFIG: u8>(c: &mut &[u8]) -> Result<Self> {
+    fn decode<const CONFIG: u16>(c: &mut &[u8]) -> Result<Self> {
         match u8::decode::<CONFIG>(c)? {
             0 => Ok(false),
             1 => Ok(true),
@@ -21,13 +21,13 @@ impl Decode<'_> for bool {
 
 impl Encode for char {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
+    fn encode<const CONFIG: u16>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         u32::from(*self).encode::<CONFIG>(c)
     }
 }
 impl Decode<'_> for char {
     #[inline]
-    fn decode<const CONFIG: u8>(c: &mut &[u8]) -> Result<Self> {
+    fn decode<const CONFIG: u16>(c: &mut &[u8]) -> Result<Self> {
         let num = u32::decode::<CONFIG>(c)?;
         char::from_u32(num).ok_or_else(|| Error::from(error::InvalidChar))
     }
@@ -37,14 +37,14 @@ impl Decode<'_> for char {
 
 impl Encode for u8 {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, writer: &mut (impl Write + ?Sized)) -> io::Result<()> {
+    fn encode<const CONFIG: u16>(&self, writer: &mut (impl Write + ?Sized)) -> io::Result<()> {
         writer.write_all(&[*self])
     }
 }
 
 impl Decode<'_> for u8 {
     #[inline]
-    fn decode<const CONFIG: u8>(reader: &mut &[u8]) -> Result<Self> {
+    fn decode<const CONFIG: u16>(reader: &mut &[u8]) -> Result<Self> {
         if !reader.is_empty() {
             unsafe {
                 let byte = reader.get_unchecked(0);
@@ -59,13 +59,13 @@ impl Decode<'_> for u8 {
 
 impl Encode for i8 {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, writer: &mut (impl Write + ?Sized)) -> io::Result<()> {
+    fn encode<const CONFIG: u16>(&self, writer: &mut (impl Write + ?Sized)) -> io::Result<()> {
         writer.write_all(&[*self as u8])
     }
 }
 impl Decode<'_> for i8 {
     #[inline]
-    fn decode<const CONFIG: u8>(c: &mut &[u8]) -> Result<Self> {
+    fn decode<const CONFIG: u16>(c: &mut &[u8]) -> Result<Self> {
         u8::decode::<CONFIG>(c).map(|byte| byte as i8)
     }
 }
@@ -134,7 +134,7 @@ macro_rules! leb128 {
 macro_rules! impl_data_type_for {
     [$catagory:tt => $($num:tt)*] => ($(
         impl Encode for $num {
-            fn encode<const CONFIG: u8>(&self, writer: &mut (impl Write + ?Sized)) -> io::Result<()> {
+            fn encode<const CONFIG: u16>(&self, writer: &mut (impl Write + ?Sized)) -> io::Result<()> {
                 match CONFIG & config::num::GET {
                     config::num::LE => writer.write_all(&self.to_le_bytes()),
                     config::num::BE => writer.write_all(&self.to_be_bytes()),
@@ -145,7 +145,7 @@ macro_rules! impl_data_type_for {
             }
         }
         impl Decode<'_> for $num {
-            fn decode<const CONFIG: u8>(c: &mut &[u8]) -> Result<Self> {
+            fn decode<const CONFIG: u16>(c: &mut &[u8]) -> Result<Self> {
                 Ok(match CONFIG & config::num::GET {
                     config::num::LE => Self::from_le_bytes(*<&[u8; size_of::<Self>()]>::decode::<CONFIG>(c)?),
                     config::num::BE => Self::from_be_bytes(*<&[u8; size_of::<Self>()]>::decode::<CONFIG>(c)?),

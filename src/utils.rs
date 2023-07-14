@@ -20,7 +20,7 @@ pub fn get_slice<'de>(remaining: &mut &'de [u8], len: usize) -> Result<&'de [u8]
 }
 
 #[inline]
-pub fn try_collect<'de, T, I, const CONFIG: u8>(cursor: &mut &'de [u8], len: usize) -> Result<I>
+pub fn try_collect<'de, T, I, const CONFIG: u16>(cursor: &mut &'de [u8], len: usize) -> Result<I>
 where
     T: Decode<'de>,
     I: FromIterator<T>,
@@ -38,14 +38,14 @@ where
     }
 }
 
-pub struct Iter<'err, 'cursor, 'de, T, const CONFIG: u8> {
+pub struct Iter<'err, 'cursor, 'de, T, const CONFIG: u16> {
     len: usize,
     err: &'err mut Option<Error>,
     reader: &'cursor mut &'de [u8],
     _marker: std::marker::PhantomData<T>,
 }
 
-impl<'err, 'cursor, 'de, T, const CONFIG: u8> Iterator for Iter<'err, 'cursor, 'de, T, CONFIG>
+impl<'err, 'cursor, 'de, T, const CONFIG: u16> Iterator for Iter<'err, 'cursor, 'de, T, CONFIG>
 where
     T: Decode<'de>,
 {

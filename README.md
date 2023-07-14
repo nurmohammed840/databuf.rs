@@ -59,7 +59,7 @@ assert_eq!(msg.data, "Hello, World!"); // Here, data is referenced.
 ```rust
 use databuf::{*, config::{num, len}};
 /// Use big endian byte order + Encode `msg` length with `databuf::var_int::BEU15` 
-const CONFIG: u8 = num::BE | len::BEU15;
+const CONFIG: u16 = num::BE | len::BEU15;
 
 #[derive(Encode, Decode)]
 struct Date {

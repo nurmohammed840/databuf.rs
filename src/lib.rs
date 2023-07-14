@@ -27,7 +27,7 @@ pub type Result<T, E = Error> = std::result::Result<T, E>;
 /// This trait used to serialize the data structure into binary format.
 pub trait Encode {
     /// Serialize the data into binary format.
-    fn encode<const CONFIG: u8>(&self, _: &mut (impl Write + ?Sized)) -> io::Result<()>;
+    fn encode<const CONFIG: u16>(&self, _: &mut (impl Write + ?Sized)) -> io::Result<()>;
 
     /// This is a convenient method used to encode a value into binary data and return it as a [Vec<u8>].
     ///
@@ -45,7 +45,7 @@ pub trait Encode {
     /// assert_eq!(bytes, vec![1, 2, 3]);
     /// ```
     #[inline]
-    fn to_bytes<const CONFIG: u8>(&self) -> Vec<u8> {
+    fn to_bytes<const CONFIG: u16>(&self) -> Vec<u8> {
         let mut vec = Vec::new();
         self.encode::<CONFIG>(&mut vec).unwrap();
         vec
@@ -55,7 +55,7 @@ pub trait Encode {
 /// This trait used to deserialize the data structure from binary format.
 pub trait Decode<'de>: Sized {
     /// Deserialize the data from binary format.
-    fn decode<const CONFIG: u8>(_: &mut &'de [u8]) -> Result<Self>;
+    fn decode<const CONFIG: u16>(_: &mut &'de [u8]) -> Result<Self>;
 
     /// This is a convenient method used to decode a value from slice.
     ///
@@ -74,7 +74,7 @@ pub trait Decode<'de>: Sized {
     /// assert_eq!(foobar, FooBar { foo: 1, bar: [2, 3] });
     /// ```
     #[inline]
-    fn from_bytes<const CONFIG: u8>(bytes: &'de [u8]) -> Result<Self> {
+    fn from_bytes<const CONFIG: u16>(bytes: &'de [u8]) -> Result<Self> {
         let mut reader = bytes;
         Decode::decode::<CONFIG>(&mut reader)
     }

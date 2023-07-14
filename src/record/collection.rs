@@ -12,13 +12,13 @@ macro_rules! impl_v2 {
         impl<'de, $($ty)*> Decode<'de> for $name { impl_v2! {@DecoderBody} }
     };
     [@EncoderBody] => {
-        fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
+        fn encode<const CONFIG: u16>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
             encode_len!(self, c);
             self.iter().try_for_each(|item| item.encode::<CONFIG>(c))
         }
     };
     [@DecoderBody] => {
-        fn decode<const CONFIG: u8>(c: &mut &'de [u8]) -> Result<Self> {
+        fn decode<const CONFIG: u16>(c: &mut &'de [u8]) -> Result<Self> {
             let len = decode_len!(c);
             utils::try_collect::<_, _, CONFIG>(c, len)
         }

@@ -83,7 +83,7 @@ def!(
     BEU15(u16),
     BITS: 15,
     UsizeTryFromErr: Infallible,
-    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
+    fn encode<const CONFIG: u16>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         let num = self.0;
         let b2 = num as u8;
         // (0) 1111111
@@ -93,7 +93,7 @@ def!(
         // (1) 1111111 11111111
         c.write_all(&[0x80 | b1 , b2])
     },
-    fn decode<const CONFIG: u8>(c: &mut &[u8]) -> Result<Self> {
+    fn decode<const CONFIG: u16>(c: &mut &[u8]) -> Result<Self> {
         let b1 = u8::decode::<CONFIG>(c)? as u16;
         // (0) 1111111
         if b1 >> 7 == 0 {
@@ -116,7 +116,7 @@ def!(
     BEU22(u32),
     BITS: 22,
     UsizeTryFromErr: std::num::TryFromIntError,
-    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
+    fn encode<const CONFIG: u16>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         let num = self.0;
         let b3 = num as u8;
         // (0) 1111111
@@ -131,7 +131,7 @@ def!(
         let b1 = (num >> 16) as u8;
         c.write_all(&[0xC0 | b1, b2, b3])
     },
-    fn decode<const CONFIG: u8>(c: &mut &[u8]) -> Result<Self> {
+    fn decode<const CONFIG: u16>(c: &mut &[u8]) -> Result<Self> {
         let b1 = u8::decode::<CONFIG>(c)? as u32;
         // (0) 1111111
         if b1 >> 7 == 0 { return Ok(Self(b1)) }
@@ -159,7 +159,7 @@ def!(
     BEU29(u32),
     BITS: 29,
     UsizeTryFromErr: std::num::TryFromIntError,
-    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
+    fn encode<const CONFIG: u16>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         let num = self.0;
         let b4 = num as u8;
         // (0) 1111111
@@ -179,7 +179,7 @@ def!(
         let b1 = (num >> 24) as u8; // next 8 bits
         c.write_all(&[0xE0 | b1, b2, b3, b4])
     },
-    fn decode<const CONFIG: u8>(c: &mut &[u8]) -> Result<Self> {
+    fn decode<const CONFIG: u16>(c: &mut &[u8]) -> Result<Self> {
         let b1 = u8::decode::<CONFIG>(c)? as u32;
         // (0) 1111111
         if b1 >> 7 == 0b0 { return Ok(Self(b1)) }
@@ -215,7 +215,7 @@ def!(
     BEU30(u32),
     BITS: 30,
     UsizeTryFromErr: std::num::TryFromIntError,
-    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
+    fn encode<const CONFIG: u16>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         let num = self.0;
         let b4 = num as u8;
         // (00) 111111
@@ -238,7 +238,7 @@ def!(
         c.write_all(&[0xC0 | b1, b2, b3, b4])
     },
 
-    fn decode<const CONFIG: u8>(c: &mut &[u8]) -> Result<Self> {
+    fn decode<const CONFIG: u16>(c: &mut &[u8]) -> Result<Self> {
         let b1 = u8::decode::<CONFIG>(c)? as u32;
         let len = b1 >> 6;
         // (00) 111111

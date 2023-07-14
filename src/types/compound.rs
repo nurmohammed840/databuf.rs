@@ -8,7 +8,7 @@ macro_rules! impl_data_type_for_typle {
         where
             $($name: Encode,)*
         {
-            #[inline] fn encode<const CONFIG: u8>(&self, _c: &mut (impl Write + ?Sized)) -> io::Result<()> {
+            #[inline] fn encode<const CONFIG: u16>(&self, _c: &mut (impl Write + ?Sized)) -> io::Result<()> {
                 $(self.$idx.encode::<CONFIG>(_c)?;)*
                 Ok(())
             }
@@ -17,7 +17,7 @@ macro_rules! impl_data_type_for_typle {
         where
             $($name: Decode<'de>,)*
         {
-            #[inline] fn decode<const CONFIG: u8>(_c: &mut &'de [u8]) -> Result<Self> {
+            #[inline] fn decode<const CONFIG: u16>(_c: &mut &'de [u8]) -> Result<Self> {
                 Ok(($($name::decode::<CONFIG>(_c)?,)*))
             }
         }
@@ -49,7 +49,7 @@ where
     T: Encode,
 {
     #[inline]
-    fn encode<const CONFIG: u8>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
+    fn encode<const CONFIG: u16>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
         self.iter().try_for_each(|item| item.encode::<CONFIG>(c))
     }
 }
@@ -59,7 +59,7 @@ where
     T: Decode<'de>,
 {
     #[inline]
-    fn decode<const CONFIG: u8>(cursor: &mut &'de [u8]) -> Result<Self> {
+    fn decode<const CONFIG: u16>(cursor: &mut &'de [u8]) -> Result<Self> {
         utils::try_collect::<T, Vec<_>, CONFIG>(cursor, N).map(|vec| unsafe {
             debug_assert_eq!(vec.len(), N);
             <[T; N]>::try_from(vec).unwrap_unchecked()
@@ -69,7 +69,7 @@ where
 
 impl<'de: 'a, 'a, const N: usize> Decode<'de> for &'a [u8; N] {
     #[inline]
-    fn decode<const CONFIG: u8>(c: &mut &'de [u8]) -> Result<Self> {
+    fn decode<const CONFIG: u16>(c: &mut &'de [u8]) -> Result<Self> {
         utils::get_slice(c, N).map(|bytes| unsafe {
             debug_assert_eq!(bytes.len(), N);
             <&[u8; N]>::try_from(bytes).unwrap_unchecked()

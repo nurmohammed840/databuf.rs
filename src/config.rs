@@ -33,24 +33,26 @@ pub mod num {
 
 // Negative Number encoding strategy, Used with variable integer encoding algorithms.
 // pub mod int_codec {
-//     pub const ZIG_ZAG: u8 = 0;
+//     pub const ZIG_ZAG: u16 = ...;
 //     // it use sign bit to represent negetive number.
-//     pub const SIGN_BIT: u8 = 1;
+//     pub const SIGN_BIT: u16 = ...;
 // }
 
 /// Configuration options for representing length of collection.
 pub mod len {
-    pub(crate) const GET: u8 = 0b_11_000;
+    pub(crate) const GET: u8 = 0b_111_000;
 
     /// length is represented with [crate::var_int::BEU30] big-endian unsigned 30-bit integer.
-    pub const BEU30: u8 = 0b_00_000;
+    pub const BEU30: u8 = 0b_000_000;
 
     /// length is represented with [crate::var_int::BEU29] big-endian unsigned 29-bit integer.
-    pub const BEU29: u8 = 0b_01_000;
+    pub const BEU29: u8 = 0b_001_000;
 
     /// length is represented with [crate::var_int::BEU22] big-endian unsigned 22-bit integer.
-    pub const BEU22: u8 = 0b_10_000;
+    pub const BEU22: u8 = 0b_010_000;
 
     /// length is represented with [crate::var_int::BEU15] big-endian unsigned 15-bit integer.
-    pub const BEU15: u8 = 0b_11_000;
+    pub const BEU15: u8 = 0b_011_000;
 }
+
+// pub mod enumerate {}

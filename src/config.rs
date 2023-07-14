@@ -43,16 +43,14 @@ pub mod len {
     pub(crate) const GET: u16 = 0b_111_0000;
 
     /// length is represented with [crate::var_int::BEU30] big-endian unsigned 30-bit integer.
-    pub const BEU30: u16 = 0b_000_0000;
+    pub const BEU30: u16 = 0 << 4;
 
     /// length is represented with [crate::var_int::BEU29] big-endian unsigned 29-bit integer.
-    pub const BEU29: u16 = 0b_001_0000;
+    pub const BEU29: u16 = 1 << 4;
 
     /// length is represented with [crate::var_int::BEU22] big-endian unsigned 22-bit integer.
-    pub const BEU22: u16 = 0b_010_0000;
+    pub const BEU22: u16 = 2 << 4;
 
     /// length is represented with [crate::var_int::BEU15] big-endian unsigned 15-bit integer.
-    pub const BEU15: u16 = 0b_011_0000;
+    pub const BEU15: u16 = 3 << 4;
 }
-
-// pub mod enumerate {}

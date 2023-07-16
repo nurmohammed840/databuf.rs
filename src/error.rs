@@ -5,11 +5,11 @@ use std::fmt::{self, Display};
 ///
 /// This `UnknownDiscriminant` can happen when decoding an `enum` type that has an unknown discriminator value.
 #[derive(Debug)]
-pub struct UnknownDiscriminant {
+pub struct UnknownDiscriminant<T> {
     /// Path of the `enum` struct
     pub ident: &'static str,
     /// Unrecognized discriminant value
-    pub discriminant: u16,
+    pub discriminant: T,
 }
 
 /// Occurs when there are not enough bytes in the input buffer to complete the decoding process.
@@ -28,18 +28,30 @@ pub struct IntegerOverflow;
 #[derive(Debug)]
 pub struct InvalidBoolValue;
 
-impl Error for UnknownDiscriminant {}
+impl<T> Error for UnknownDiscriminant<T> where T: std::fmt::Debug + Display {}
 impl Error for InsufficientBytes {}
 impl Error for InvalidChar {}
 impl Error for IntegerOverflow {}
 impl Error for InvalidBoolValue {}
 
-impl Display for UnknownDiscriminant {
+impl<T> UnknownDiscriminant<T> {
+    #[inline]
+    #[doc(hidden)]
+    pub fn new(ident: &'static str, discriminant: T) -> Self {
+        Self {
+            ident,
+            discriminant,
+        }
+    }
+}
+
+impl<T: Display> Display for UnknownDiscriminant<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         let Self {
             ident,
             discriminant,
         } = self;
+
         writeln!(f, "unknown `{discriminant}` discriminator of `{ident}`")
     }
 }

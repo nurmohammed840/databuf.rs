@@ -1,9 +1,9 @@
 use super::*;
 use syn::punctuated::Iter;
 
-impl Expand<'_, '_, '_> {
+impl Expand<'_, '_> {
     pub fn encoder(&mut self) {
-        let crate_path = self.crate_path;
+        let crate_path = &self.crate_path;
         let output = &mut self.output;
 
         let DeriveInput {

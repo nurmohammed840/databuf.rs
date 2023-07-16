@@ -1,6 +1,7 @@
 #![allow(warnings)]
 use databuf::{Decode, Encode};
 
+#[repr(u8)]
 #[derive(Encode, Decode)]
 enum Enum1 {
     A,
@@ -19,10 +20,11 @@ enum Enum1 {
 // #[test]
 // fn test_name() {}
 
-#[repr(usize)]
+#[repr(u8)]
 #[derive(Encode, Decode)]
 pub enum Number {
     Integer(i64) = 1,
     Float(f64),
-    Complex { real: f64, imaginary: f64 } = 3,
+    FloatW(f64),
+    Complex { real: f64, imaginary: f64 } = 5,
 }

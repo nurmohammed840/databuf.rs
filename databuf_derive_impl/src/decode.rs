@@ -1,8 +1,9 @@
 use super::*;
 
-impl Expand<'_, '_, '_> {
+impl Expand<'_, '_> {
     pub fn decoder(&mut self) {
-        let crate_path = self.crate_path;
+        let crate_path = &self.crate_path;
+        let enum_repr = self.enum_repr.as_ref();
         let output = &mut self.output;
         let DeriveInput {
             data,
@@ -18,7 +19,6 @@ impl Expand<'_, '_, '_> {
                     quote!(o, { let output = Self #de });
                 }
                 Data::Enum(enum_data) => {
-                    // let has_discriminant = enum_data.variants.iter().any(|v| v.discriminant.is_some());
                     let ident = ident.to_string();
 
                     let items = quote(|o| {
@@ -57,17 +57,28 @@ impl Expand<'_, '_, '_> {
                             });
                         }
                     });
+                    // enum_repr
+                    let id = quote(|o| {
+                        let ty = match enum_repr {
+                            Some(repr) => repr,
+                            None => "isize",
+                            // let has_discriminant = enum_data.variants.iter().any(|v| v.discriminant.is_some());
+                        };
+                        let repr = Ident::new(ty, Span::call_site());
+                        quote!(o, {
+                            let discriminant: #repr = D::decode::<C>(c)?;
+                        });
+                    });
+
                     quote!(o, {
-                        let discriminant: isize = D::decode::<C>(c)?;
+                        #id
                         let output = match discriminant {
                             #items
                             _ => {
-                                return ::std::result::Result::Err(::std::boxed::Box::new(
-                                    #crate_path::error::UnknownDiscriminant::new(
-                                        ::std::concat!(::std::module_path!(), "::", #ident),
-                                        discriminant
-                                    )
-                                ))
+                                return #crate_path::error::UnknownDiscriminant::new_boxed_err(
+                                    ::std::concat!(::std::module_path!(), "::", #ident),
+                                    discriminant
+                                )
                             }
                         }
                     });

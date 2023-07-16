@@ -7,20 +7,16 @@ use proc_macro::TokenStream;
 use proc_macro2::TokenStream as TokenStream2;
 use syn::parse_macro_input;
 
-fn crate_path() -> TokenStream2 {
-    let mut o = TokenStream2::new();
-    quote!(o, { ::databuf });
-    o
-}
-
 fn expand<F>(input: TokenStream, f: F) -> TokenStream
 where
     F: FnOnce(Expand),
 {
     let input: DeriveInput = parse_macro_input!(input);
     let mut output = TokenStream2::new();
-    let crate_path = crate_path();
-    f(Expand::new(&crate_path, &input, &mut output));
+    let mut crate_path = TokenStream2::new();
+
+    quote!(crate_path, { ::databuf });
+    f(Expand::new(crate_path, &input, &mut output));
     TokenStream::from(output)
 }
 

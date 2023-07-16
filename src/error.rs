@@ -34,14 +34,17 @@ impl Error for InvalidChar {}
 impl Error for IntegerOverflow {}
 impl Error for InvalidBoolValue {}
 
-impl<T> UnknownDiscriminant<T> {
+impl<D> UnknownDiscriminant<D>
+where
+    D: std::fmt::Debug + Display + Send + Sync + 'static,
+{
     #[inline]
     #[doc(hidden)]
-    pub fn new(ident: &'static str, discriminant: T) -> Self {
-        Self {
+    pub fn new_boxed_err<T>(ident: &'static str, discriminant: D) -> crate::Result<T> {
+        Err(Box::new(Self {
             ident,
             discriminant,
-        }
+        }))
     }
 }
 

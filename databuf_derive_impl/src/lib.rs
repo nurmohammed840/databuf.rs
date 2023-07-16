@@ -1,5 +1,5 @@
-pub mod decode;
-pub mod encode;
+mod decode;
+mod encode;
 
 pub use quote2;
 pub use quote2::proc_macro2;
@@ -31,25 +31,24 @@ pub fn get_enum_repr(attrs: &Vec<Attribute>) -> Option<String> {
     None
 }
 
-pub struct Expand<'p, 'i, 'o> {
-    pub crate_path: &'p TokenStream,
+pub struct Expand<'i, 'o> {
+    pub crate_path: TokenStream,
     pub input: &'i DeriveInput,
     pub output: &'o mut TokenStream,
     pub enum_repr: Option<String>,
 }
 
-impl<'p, 'i, 'o> Expand<'p, 'i, 'o> {
+impl<'i, 'o> Expand<'i, 'o> {
     pub fn new(
-        crate_path: &'p TokenStream,
+        crate_path: TokenStream,
         input: &'i DeriveInput,
         output: &'o mut TokenStream,
     ) -> Self {
-        let enum_repr = get_enum_repr(&input.attrs);
         Self {
             crate_path,
             input,
             output,
-            enum_repr,
+            enum_repr: get_enum_repr(&input.attrs),
         }
     }
 }

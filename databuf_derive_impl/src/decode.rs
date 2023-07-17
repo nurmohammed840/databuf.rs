@@ -3,7 +3,8 @@ use super::*;
 impl Expand<'_, '_> {
     pub fn decoder(&mut self) {
         let crate_path = &self.crate_path;
-        let enum_repr = self.enum_repr.as_ref();
+        let enum_repr = &self.enum_repr;
+        let is_unit_enum = &self.is_unit_enum;
         let output = &mut self.output;
         let DeriveInput {
             data,
@@ -19,12 +20,8 @@ impl Expand<'_, '_> {
                     quote!(o, { let output = Self #de });
                 }
                 Data::Enum(enum_data) => {
-                    let ident = ident.to_string();
-
                     let items = quote(|o| {
-                        let mut index = Index::from(0);
-                        let mut last_discriminant = None;
-
+                        let mut discriminator = Discriminator::new(true);
                         for Variant {
                             ident,
                             fields,
@@ -32,37 +29,24 @@ impl Expand<'_, '_> {
                             ..
                         } in enum_data.variants.iter()
                         {
-                            let index = quote(|o| match discriminant {
-                                Some((_, expr)) => {
-                                    index.index = 1;
-                                    last_discriminant = Some(expr.clone());
-                                    quote!(o, { #expr });
-                                }
-                                None => {
-                                    let i = &index;
-                                    match last_discriminant {
-                                        Some(ref expr) => {
-                                            quote!(o, { v if v == #expr + #i });
-                                        }
-                                        None => {
-                                            quote!(o, { #i });
-                                        }
-                                    }
-                                    index.index += 1;
-                                }
-                            });
+                            let index = discriminator.get(discriminant);
                             let fields = decode_fields(fields);
                             quote!(o, {
                                 #index => Self::#ident #fields,
                             });
                         }
                     });
-                    // enum_repr
+
                     let id = quote(|o| {
                         let ty = match enum_repr {
                             Some(repr) => repr,
+                            None if !is_unit_enum => {
+                                quote!(o, {
+                                    let discriminant: u16 = #crate_path::var_int::BEU15::decode::<C>(c)?.0;
+                                });
+                                return;
+                            }
                             None => "isize",
-                            // let has_discriminant = enum_data.variants.iter().any(|v| v.discriminant.is_some());
                         };
                         let repr = Ident::new(ty, Span::call_site());
                         quote!(o, {
@@ -70,6 +54,7 @@ impl Expand<'_, '_> {
                         });
                     });
 
+                    let ident = ident.to_string();
                     quote!(o, {
                         #id
                         let output = match discriminant {

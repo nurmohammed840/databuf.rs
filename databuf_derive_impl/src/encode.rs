@@ -4,8 +4,9 @@ use syn::punctuated::Iter;
 impl Expand<'_, '_> {
     pub fn encoder(&mut self) {
         let crate_path = &self.crate_path;
+        let enum_repr = self.enum_repr.as_ref();
+        let is_unit_enum = &self.is_unit_enum;
         let output = &mut self.output;
-
         let DeriveInput {
             data,
             ident,
@@ -28,13 +29,20 @@ impl Expand<'_, '_> {
                 },
                 Data::Enum(enum_data) => {
                     let items = quote(|o| {
-                        for (i, v) in enum_data.variants.iter().enumerate() {
-                            let named = &v.ident;
-                            let index = Index::from(i);
+                        let mut discriminator = Discriminator::new(false);
+
+                        for Variant {
+                            ident,
+                            fields,
+                            discriminant,
+                            ..
+                        } in &enum_data.variants
+                        {
+                            let index = discriminator.get(discriminant);
                             let mut encoders = Token(TokenStream::new());
 
                             let alias = quote(|o| {
-                                match &v.fields {
+                                match &fields {
                                     Fields::Named(f) => {
                                         let alias = make_alias(true, f.named.iter(), &mut encoders);
                                         quote!(o, {{ #alias }});
@@ -47,16 +55,36 @@ impl Expand<'_, '_> {
                                     Fields::Unit => {}
                                 };
                             });
+                            let encode_index = quote(|o| {
+                                let ty = match enum_repr {
+                                    None if !is_unit_enum => {
+                                        quote!(o, {
+                                            E::encode::<C>(&BEU15(#index), c)?;
+                                        });
+                                        return;
+                                    }
+                                    Some(repr) => repr,
+                                    None => "isize",
+                                };
+                                let repr = Ident::new(ty, Span::call_site());
+                                quote!(o, {
+                                    #repr::encode::<C>(&(#index), c)?;
+                                });
+                            });
                             quote!(o, {
-                                Self:: #named #alias => {
-                                    E::encode::<C>(&BEU15(#index), c)?;
+                                Self:: #ident #alias => {
+                                    #encode_index
                                     #encoders
                                 }
                             });
                         }
                     });
+                    if !is_unit_enum && enum_repr.is_none() {
+                        quote!(o, {
+                            use #crate_path::var_int::BEU15;
+                        });
+                    }
                     quote!(o, {
-                        use #crate_path::var_int::BEU15;
                         match self {
                             #items
                         }

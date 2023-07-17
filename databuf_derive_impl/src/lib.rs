@@ -14,16 +14,11 @@ pub fn get_enum_repr(attrs: &Vec<Attribute>) -> Option<String> {
         let Meta::List(list) = meta else { continue };
         if list.path.is_ident("repr") {
             for tt in list.tokens.clone().into_iter() {
-                match tt {
-                    TokenTree::Ident(repr) => {
-                        let repr = repr.to_string();
-                        match repr.as_str() {
-                            "u8" | "u16" | "u32" | "u64" | "usize" | "i8" | "i16" | "i32"
-                            | "i64" | "isize" => return Some(repr),
-                            _ => {}
-                        }
+                if let TokenTree::Ident(repr) = tt {
+                    let repr = repr.to_string();
+                    if repr.as_str().starts_with(['i', 'u']) {
+                        return Some(repr);
                     }
-                    _ => {}
                 }
             }
         }
@@ -36,6 +31,7 @@ pub struct Expand<'i, 'o> {
     pub input: &'i DeriveInput,
     pub output: &'o mut TokenStream,
     pub enum_repr: Option<String>,
+    pub is_unit_enum: bool,
 }
 
 impl<'i, 'o> Expand<'i, 'o> {
@@ -49,6 +45,55 @@ impl<'i, 'o> Expand<'i, 'o> {
             input,
             output,
             enum_repr: get_enum_repr(&input.attrs),
+            is_unit_enum: {
+                if let Data::Enum(data) = &input.data {
+                    data.variants
+                        .iter()
+                        .all(|v| v.discriminant.is_some() || matches!(v.fields, Fields::Unit))
+                } else {
+                    false
+                }
+            },
         }
+    }
+}
+
+struct Discriminator {
+    discriminant: Index,
+    expr: Option<Expr>,
+    is_decoder: bool,
+}
+
+impl Discriminator {
+    fn new(is_decoder: bool) -> Self {
+        Self {
+            discriminant: Index::from(0),
+            expr: None,
+            is_decoder,
+        }
+    }
+    fn get<'a>(
+        &'a mut self,
+        discriminant: &'a Option<(Token!(=), Expr)>,
+    ) -> Token<impl FnOnce(&mut TokenStream) + 'a> {
+        quote(move |o| match discriminant {
+            Some((_, expr)) => {
+                self.discriminant.index = 1;
+                self.expr = Some(expr.clone());
+                quote!(o, { #expr });
+            }
+            None => {
+                let index = &self.discriminant;
+                if let Some(expr) = &self.expr {
+                    if self.is_decoder {
+                        quote!(o, { v if v == });
+                    }
+                    quote!(o, { #expr + #index });
+                } else {
+                    quote!(o, { #index });
+                }
+                self.discriminant.index += 1;
+            }
+        })
     }
 }

@@ -6,7 +6,7 @@ This library used to serialize and deserialize structured data in binary format.
 
 ```toml
 [dependencies]
-databuf = "0.3"
+databuf = "0.5"
 ```
 
 ```rust

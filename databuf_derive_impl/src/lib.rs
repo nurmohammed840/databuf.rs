@@ -26,6 +26,16 @@ pub fn get_enum_repr(attrs: &Vec<Attribute>) -> Option<String> {
     None
 }
 
+pub fn is_unit_enum(input: &DeriveInput) -> bool {
+    if let Data::Enum(data) = &input.data {
+        data.variants
+            .iter()
+            .all(|v| matches!(v.fields, Fields::Unit))
+    } else {
+        false
+    }
+}
+
 pub struct Expand<'i, 'o> {
     pub crate_path: TokenStream,
     pub input: &'i DeriveInput,
@@ -45,15 +55,7 @@ impl<'i, 'o> Expand<'i, 'o> {
             input,
             output,
             enum_repr: get_enum_repr(&input.attrs),
-            is_unit_enum: {
-                if let Data::Enum(data) = &input.data {
-                    data.variants
-                        .iter()
-                        .all(|v| v.discriminant.is_some() || matches!(v.fields, Fields::Unit))
-                } else {
-                    false
-                }
-            },
+            is_unit_enum: is_unit_enum(input),
         }
     }
 }

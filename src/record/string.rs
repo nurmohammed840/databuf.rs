@@ -13,8 +13,8 @@ macro_rules! impl_encoder_for {
 impl_encoder_for!(str, String);
 
 macro_rules! impl_encoder_for_trait_obj {
-    [$($ty:path),*] => {$(
-        impl Encode for Box<dyn $ty> {
+    [$($ty:ty);*] => {$(
+        impl Encode for $ty {
             #[inline]
             fn encode<const CONFIG: u16>(&self, c: &mut (impl Write + ?Sized)) -> io::Result<()> {
                 let string = self.to_string();
@@ -24,7 +24,7 @@ macro_rules! impl_encoder_for_trait_obj {
         }
     )*};
 }
-impl_encoder_for_trait_obj!(std::fmt::Display, std::error::Error);
+impl_encoder_for_trait_obj!(Box<dyn std::fmt::Display>; Box<dyn std::error::Error>; Box<dyn std::error::Error + Send + Sync>);
 
 macro_rules! read_slice {
     [$c: expr] => ({
